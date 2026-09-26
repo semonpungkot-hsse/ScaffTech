@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScaffTech - Scaffolding Database & HSE Inspection Center</title>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN with Custom Brand Tokens -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS (XLSX) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supabase JS Client v2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.3); }
+        }
+        .animate-pulse-dot {
+            animation: pulse-dot 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #93c5fd;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased font-sans min-h-screen selection:bg-brand-100 selection:text-brand-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // Greenfield Traffic Route Plan direct image
+        const DEFAULT_MAP_URL = "https://qiumbpyltaclwjrfhslu.supabase.co/storage/v1/object/public/Attach/Green%20Field-%20Traffic%20Route%20Plan%20fix.png";
+
+        // Supabase Default Credentials
+        const DEFAULT_SUPABASE_URL = 'https://zlstjvxirzxaghbcmbod.supabase.co';
+        const DEFAULT_SUPABASE_KEY = 'sb_publishable_6ROp0xv_X1sMtNGGaLsrsg_bPfe_xtA';
+
+        // Landmark references for quick area selection and accurate coordinate mapping
+        const MAP_RED_LOCATIONS = [
+            { id: 'SUB_524', name: 'SUB 524', x: 21.2, y: 12.5, area: 'North Yard', type: 'Substation' },
+            { id: 'CLINIC', name: 'CLINIC', x: 31.4, y: 10.2, area: 'Medical Point', type: 'Facility' },
+            { id: 'WASTE_SKIP', name: 'WASTE SKIP', x: 45.2, y: 14.8, area: 'Environmental Yard', type: 'Facility' },
+            { id: 'SUB_520', name: 'SUB 520', x: 22.1, y: 23.4, area: 'North Center', type: 'Substation' },
+            { id: 'SUB_513', name: 'SUB 513', x: 34.0, y: 23.2, area: 'Mid North', type: 'Substation' },
+            { id: 'SUB_521', name: 'SUB 521', x: 44.3, y: 23.1, area: 'Central Plant', type: 'Substation' },
+            { id: 'SUB_580', name: 'SUB 580', x: 63.5, y: 28.5, area: 'East Utility', type: 'Substation' },
+            { id: 'UNIT_542', name: 'UNIT 542', x: 21.0, y: 42.0, area: 'Process Train 1', type: 'Unit Area' },
+            { id: 'UNIT_543', name: 'UNIT 543', x: 34.2, y: 42.3, area: 'Process Train 2', type: 'Unit Area' },
+            { id: 'UNIT_544', name: 'UNIT 544', x: 44.5, y: 42.1, area: 'Process Train 3', type: 'Unit Area' },
+            { id: 'GATE_02A', name: 'GATE-02A', x: 7.2, y: 58.2, area: 'West Perimeter', type: 'Gate' },
+            { id: 'UNIT_537', name: 'UNIT 537', x: 60.2, y: 65.1, area: 'Fractionation Area', type: 'Unit Area' },
+            { id: 'UNIT_566', name: 'UNIT 566', x: 72.1, y: 62.4, area: 'Compression Area', type: 'Unit Area' },
+            { id: 'U_562', name: 'U-562', x: 80.3, y: 56.5, area: 'Boiler Area', type: 'Unit Area' },
+            { id: 'U_567', name: 'U-567', x: 80.5, y: 66.2, area: 'Cooling Tower', type: 'Unit Area' },
+            { id: 'UNIT_571', name: 'UNIT 571', x: 75.2, y: 78.3, area: 'Sulfur Plant', type: 'Unit Area' },
+            { id: 'GATE_02', name: 'GATE -02', x: 5.4, y: 83.2, area: 'Southwest Gate', type: 'Gate' },
+            { id: 'JV_AMBULANCE', name: 'JV AMBULANCE PARKING', x: 48.0, y: 86.4, area: 'Emergency Staging', type: 'Facility' },
+            { id: 'SUB_522', name: 'SUB 522', x: 66.2, y: 89.1, area: 'South Grid', type: 'Substation' },
+            { id: 'IES_514', name: 'IES-514', x: 78.4, y: 88.5, area: 'High Voltage yard', type: 'Substation' },
+            { id: 'UNIT_500', name: 'UNIT 500', x: 18.2, y: 90.3, area: 'Offsite Receiving', type: 'Unit Area' },
+            { id: 'UNIT_518_517_516', name: 'UNIT 518, 517, 516', x: 39.1, y: 91.0, area: 'Storage Tanks', type: 'Unit Area' },
+            { id: 'GATE_03A', name: 'GATE-03A', x: 38.2, y: 96.8, area: 'South Access A', type: 'Gate' },
+            { id: 'GATE_03', name: 'GATE -03', x: 81.3, y: 96.8, area: 'Main Heavy Transport', type: 'Gate' }
+        ];
+
+        // Status configurations
+        const STATUS_MAP = {
+            ACTIVE: { label: 'Active (Green Tag)', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', dot: 'bg-emerald-500' },
+            BUILDING: { label: 'Building (Erection)', badge: 'bg-amber-100 text-amber-800 border-amber-300', dot: 'bg-amber-500' },
+            REQUESTED: { label: 'Requested (Permit)', badge: 'bg-sky-100 text-brand-800 border-sky-300', dot: 'bg-brand-500' },
+            EXPIRED: { label: 'Expired (>7d)', badge: 'bg-rose-100 text-rose-800 border-rose-300', dot: 'bg-rose-600' },
+            DISMANTLED: { label: 'Dismantled', badge: 'bg-slate-100 text-slate-700 border-slate-300', dot: 'bg-slate-400' }
+        };
+
+        const getDaysDifference = (dateString) => {
+            if (!dateString) return 999;
+            const pastDate = new Date(dateString);
+            const today = new Date();
+            pastDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            const diffTime = today - pastDate;
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        };
+
+        const getFormattedDate = (offsetDays = 0) => {
+            const d = new Date(Date.now() + offsetDays * 86400000);
+            return d.toISOString().split('T')[0];
+        };
+
+        const evaluateInspectionHealth = (scaffold) => {
+            if (scaffold.status === 'DISMANTLED') {
+                return { isExpired: false, isUrgent: false, daysPassed: 0, daysLeft: 0, healthLabel: 'Dismantled', tone: 'slate' };
+            }
+            const daysPassed = getDaysDifference(scaffold.lastInspection);
+            const isExpired = scaffold.status === 'EXPIRED' || daysPassed > 7;
+            const daysLeft = Math.max(7 - daysPassed, 0);
+            const isUrgent = !isExpired && daysLeft <= 2;
+
+            let healthLabel = `Inspected ${daysPassed}d ago (${daysLeft}d left)`;
+            let tone = 'emerald';
+            if (isExpired) {
+                healthLabel = `EXPIRED (${daysPassed}d overdue)`;
+                tone = 'rose';
+            } else if (isUrgent) {
+                healthLabel = `CRITICAL (${daysLeft}d remaining)`;
+                tone = 'amber';
+            }
+            return { isExpired, isUrgent, daysPassed, daysLeft, healthLabel, tone };
+        };
+
+        // Data mappers (CamelCase UI <-> Snake_Case Supabase Postgres)
+        const toDbRecord = (item) => ({
+            id: item.id,
+            tag_number: item.tagNumber || item.tag_number || item.id,
+            location: item.location || '',
+            type: item.type || 'POINT',
+            status: item.status || 'ACTIVE',
+            x: item.x !== undefined && item.x !== null ? item.x : null,
+            y: item.y !== undefined && item.y !== null ? item.y : null,
+            points: item.points || null,
+            install_date: item.installDate || item.install_date || '',
+            last_inspection: item.lastInspection || item.last_inspection || '',
+            target_dismantle_date: item.targetDismantleDate || item.target_dismantle_date || '',
+            actual_dismantle_date: item.actualDismantleDate || item.actual_dismantle_date || '',
+            inspector: item.inspector || '',
+            notes: item.notes || '',
+            structure_type: item.structureType || item.structure_type || '',
+            height_meters: item.heightMeters || item.height_meters || '',
+            length_meters: item.lengthMeters || item.length_meters || '',
+            updated_at: new Date().toISOString()
+        });
+
+        const fromDbRecord = (row) => ({
+            id: row.id,
+            tagNumber: row.tag_number || row.tagNumber || row.id,
+            location: row.location || '',
+            type: row.type || 'POINT',
+            status: row.status || 'ACTIVE',
+            x: row.x !== null && row.x !== undefined ? Number(row.x) : undefined,
+            y: row.y !== null && row.y !== undefined ? Number(row.y) : undefined,
+            points: Array.isArray(row.points) ? row.points : undefined,
+            installDate: row.install_date || row.installDate || '',
+            lastInspection: row.last_inspection || row.lastInspection || '',
+            targetDismantleDate: row.target_dismantle_date || row.targetDismantleDate || '',
+            actualDismantleDate: row.actual_dismantle_date || row.actualDismantleDate || '',
+            inspector: row.inspector || '',
+            notes: row.notes || '',
+            structureType: row.structure_type || row.structureType || '',
+            heightMeters: row.height_meters || row.heightMeters || '',
+            lengthMeters: row.length_meters || row.lengthMeters || ''
+        });
+
+        function App() {
+            // Main Dataset
+            const [scaffolds, setScaffolds] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('svt_scaffolds_v5_clean');
+                    return saved ? JSON.parse(saved) : [];
+                } catch {
+                    return [];
+                }
+            });
+
+            // Supabase State
+            const [supabaseStatus, setSupabaseStatus] = useState('CONNECTING');
+            const [supabaseStatusMsg, setSupabaseStatusMsg] = useState('Connecting to Supabase...');
+            const [isSyncing, setIsSyncing] = useState(false);
+
+            // Filter & Search States
+            const [statusFilter, setStatusFilter] = useState('ALL');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [healthFilter, setHealthFilter] = useState('ALL'); // ALL, VALID, URGENT, EXPIRED
+            const [typeFilter, setTypeFilter] = useState('ALL'); // ALL, POINT, LINEAR
+            const [sortBy, setSortBy] = useState('lastInspection'); // id, tagNumber, lastInspection, installDate, status
+            const [sortOrder, setSortOrder] = useState('asc'); // asc, desc
+
+            // Selected & Editing Modals
+            const [selectedScaffold, setSelectedScaffold] = useState(null);
+            const [showModal, setShowModal] = useState(false);
+            const [modalMode, setModalMode] = useState('NEW'); // NEW, EDIT
+            const [editingScaffold, setEditingScaffold] = useState(null);
+            const [toast, setToast] = useState(null);
+
+            // Pagination
+            const [currentPage, setCurrentPage] = useState(1);
+            const itemsPerPage = 12;
+
+            const supabaseClient = useMemo(() => {
+                if (!window.supabase) return null;
+                try {
+                    return window.supabase.createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY);
+                } catch (e) {
+                    console.error('Supabase init error:', e);
+                    return null;
+                }
+            }, []);
+
+            const showNotification = (message, type = 'info') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 4000);
+            };
+
+            // Connect & fetch data from Supabase
+            const fetchCloudData = async (silent = false) => {
+                if (!supabaseClient) return;
+                setIsSyncing(true);
+                try {
+                    const { data, error } = await supabaseClient.from('scaffolds').select('*').order('created_at', { ascending: false });
+                    if (error) {
+                        console.warn('Fetch error:', error);
+                        if (error.code === '42P01' || error.code === 'PGRST205') {
+                            setSupabaseStatus('TABLE_MISSING');
+                            setSupabaseStatusMsg('Table "scaffolds" not found in Supabase database');
+                        } else {
+                            setSupabaseStatus('ERROR');
+                            setSupabaseStatusMsg(error.message);
+                        }
+                    } else {
+                        setSupabaseStatus('CONNECTED');
+                        setSupabaseStatusMsg('Connected & Realtime Active');
+                        if (data && data.length > 0) {
+                            const mapped = data.map(fromDbRecord);
+                            setScaffolds(mapped);
+                            if (!silent) showNotification(`Loaded ${mapped.length} scaffolds from Supabase Cloud!`, 'success');
+                        } else if (!silent) {
+                            showNotification('Supabase database is empty. You may register new scaffolds now.', 'info');
+                        }
+                    }
+                } catch (err) {
+                    setSupabaseStatus('ERROR');
+                    setSupabaseStatusMsg(err.message);
+                } finally {
+                    setIsSyncing(false);
+                }
+            };
+
+            // Initial load & Supabase Realtime Listener
+            useEffect(() => {
+                fetchCloudData(true);
+
+                if (!supabaseClient) return;
+                const channel = supabaseClient
+                    .channel('table_scaffolds_changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'scaffolds' }, (payload) => {
+                        if (payload.eventType === 'INSERT') {
+                            const item = fromDbRecord(payload.new);
+                            setScaffolds(prev => prev.some(s => s.id === item.id) ? prev : [item, ...prev]);
+                            showNotification(`New record synced: ${item.id} (${item.tagNumber})`, 'info');
+                        } else if (payload.eventType === 'UPDATE') {
+                            const item = fromDbRecord(payload.new);
+                            setScaffolds(prev => prev.map(s => s.id === item.id ? item : s));
+                            setSelectedScaffold(prev => prev?.id === item.id ? item : prev);
+                        } else if (payload.eventType === 'DELETE') {
+                            const id = payload.old?.id;
+                            if (id) {
+                                setScaffolds(prev => prev.filter(s => s.id !== id));
+                                setSelectedScaffold(prev => prev?.id === id ? null : prev);
+                            }
+                        }
+                    })
+                    .subscribe();
+
+                return () => {
+                    supabaseClient.removeChannel(channel);
+                };
+            }, [supabaseClient]);
+
+            // Save to localStorage whenever scaffolds change
+            useEffect(() => {
+                localStorage.setItem('svt_scaffolds_v5_clean', JSON.stringify(scaffolds));
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [scaffolds, selectedScaffold, showModal, statusFilter, healthFilter, currentPage]);
+
+            // HSE Quick Verification Action
+            const handlePassInspection = async (scaffoldId) => {
+                const today = getFormattedDate(0);
+                const updatedList = scaffolds.map(s => {
+                    if (s.id === scaffoldId) {
+                        return { ...s, status: 'ACTIVE', lastInspection: today };
+                    }
+                    return s;
+                });
+                setScaffolds(updatedList);
+                if (selectedScaffold?.id === scaffoldId) {
+                    setSelectedScaffold(prev => ({ ...prev, status: 'ACTIVE', lastInspection: today }));
+                }
+
+                // Cloud update
+                if (supabaseClient && supabaseStatus === 'CONNECTED') {
+                    try {
+                        const target = updatedList.find(s => s.id === scaffoldId);
+                        await supabaseClient.from('scaffolds').upsert(toDbRecord(target), { onConflict: 'id' });
+                    } catch (e) {
+                        console.error('Inspection cloud save error:', e);
+                    }
+                }
+                showNotification(`Inspection APPROVED! ${scaffoldId} verified ACTIVE for 7 days.`, 'success');
+            };
+
+            // Quick Status Switch
+            const handleQuickStatusChange = async (scaffoldId, newStatus) => {
+                const updatedList = scaffolds.map(s => s.id === scaffoldId ? { ...s, status: newStatus } : s);
+                setScaffolds(updatedList);
+                if (selectedScaffold?.id === scaffoldId) {
+                    setSelectedScaffold(prev => ({ ...prev, status: newStatus }));
+                }
+
+                if (supabaseClient && supabaseStatus === 'CONNECTED') {
+                    const target = updatedList.find(s => s.id === scaffoldId);
+                    await supabaseClient.from('scaffolds').upsert(toDbRecord(target), { onConflict: 'id' });
+                }
+                showNotification(`Status of ${scaffoldId} changed to ${newStatus}.`, 'info');
+            };
+
+            // Handle Save Modal (Create / Update)
+            const handleSaveModal = async (formData) => {
+                let data = { ...formData };
+                // Ensure coordinates exist for accurate mapping
+                if (data.type === 'POINT' && (data.x === undefined || data.y === undefined)) {
+                    const matchedLoc = MAP_RED_LOCATIONS.find(l => data.location && data.location.includes(l.name));
+                    if (matchedLoc) {
+                        data.x = matchedLoc.x;
+                        data.y = matchedLoc.y;
+                    } else {
+                        data.x = 21.2;
+                        data.y = 12.5;
+                    }
+                } else if (data.type === 'LINEAR' && (!data.points || data.points.length < 2)) {
+                    const parts = (data.location || '').split('->').map(s => s.trim());
+                    const p1 = MAP_RED_LOCATIONS.find(l => parts[0] && parts[0].includes(l.name)) || { x: 34.2, y: 42.3 };
+                    const p2 = MAP_RED_LOCATIONS.find(l => parts[1] && parts[1].includes(l.name)) || { x: 44.5, y: 42.1 };
+                    data.points = [{ x: p1.x, y: p1.y }, { x: p2.x, y: p2.y }];
+                }
+
+                let updatedList;
+                if (modalMode === 'NEW') {
+                    updatedList = [data, ...scaffolds];
+                    showNotification(`Scaffold ${data.id} successfully registered!`, 'success');
+                } else {
+                    updatedList = scaffolds.map(s => s.id === data.id ? data : s);
+                    showNotification(`Record ${data.id} successfully updated!`, 'success');
+                }
+                setScaffolds(updatedList);
+                setSelectedScaffold(data);
+                setShowModal(false);
+                setEditingScaffold(null);
+
+                // Cloud sync
+                if (supabaseClient && supabaseStatus === 'CONNECTED') {
+                    try {
+                        await supabaseClient.from('scaffolds').upsert(toDbRecord(data), { onConflict: 'id' });
+                    } catch (e) {
+                        console.error('Save cloud error:', e);
+                    }
+                }
+            };
+
+            // Handle Delete
+            const handleDelete = async (id) => {
+                if (!window.confirm(`Are you sure you want to delete scaffold ${id}?`)) return;
+                setScaffolds(prev => prev.filter(s => s.id !== id));
+                if (selectedScaffold?.id === id) setSelectedScaffold(null);
+
+                if (supabaseClient && supabaseStatus === 'CONNECTED') {
+                    try {
+                        await supabaseClient.from('scaffolds').delete().eq('id', id);
+                    } catch (e) {
+                        console.error('Delete cloud error:', e);
+                    }
+                }
+                showNotification(`Scaffold ${id} has been deleted.`, 'info');
+            };
+
+            // Export to Excel
+            const handleExportExcel = () => {
+                if (scaffolds.length === 0) {
+                    showNotification('No scaffold data available to export!', 'warning');
+                    return;
+                }
+                const rows = filteredScaffolds.map(s => {
+                    const health = evaluateInspectionHealth(s);
+                    return {
+                        'ID Scaffolding': s.id,
+                        'Tag Number': s.tagNumber,
+                        'Lokasi': s.location,
+                        'Tipe': s.type,
+                        'Status': s.status,
+                        'Structure Type': s.structureType,
+                        'Tinggi (m)': s.heightMeters,
+                        'Panjang (m)': s.lengthMeters,
+                        'Install Date': s.installDate,
+                        'Tgl Inspeksi Terakhir': s.lastInspection,
+                        'Target Dismantle': s.targetDismantleDate,
+                        'Status HSE': health.healthLabel,
+                        'Inspector HSE': s.inspector,
+                        'Catatan': s.notes
+                    };
+                });
+                const ws = XLSX.utils.json_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Scaffolding_Report");
+                XLSX.writeFile(wb, `Scaffolding_Report_${getFormattedDate(0)}.xlsx`);
+                showNotification('Excel report successfully downloaded!', 'success');
+            };
+
+            // Computed Statistics
+            const stats = useMemo(() => {
+                let active = 0, building = 0, requested = 0, expired = 0, dismantled = 0, urgent = 0;
+                scaffolds.forEach(s => {
+                    const health = evaluateInspectionHealth(s);
+                    if (s.status === 'ACTIVE') active++;
+                    else if (s.status === 'BUILDING') building++;
+                    else if (s.status === 'REQUESTED') requested++;
+                    else if (s.status === 'DISMANTLED') dismantled++;
+
+                    if (health.isExpired) expired++;
+                    else if (health.isUrgent) urgent++;
+                });
+                return { total: scaffolds.length, active, building, requested, expired, dismantled, urgent };
+            }, [scaffolds]);
+
+            // Filtered & Sorted Scaffolds
+            const filteredScaffolds = useMemo(() => {
+                return scaffolds.filter(s => {
+                    // Status filter
+                    if (statusFilter !== 'ALL' && s.status !== statusFilter) return false;
+
+                    // HSE Health filter
+                    const health = evaluateInspectionHealth(s);
+                    if (healthFilter === 'EXPIRED' && !health.isExpired) return false;
+                    if (healthFilter === 'URGENT' && !health.isUrgent) return false;
+                    if (healthFilter === 'VALID' && (health.isExpired || health.isUrgent)) return false;
+
+                    // Type filter
+                    if (typeFilter !== 'ALL' && s.type !== typeFilter) return false;
+
+                    // Search query
+                    if (searchQuery.trim()) {
+                        const q = searchQuery.toLowerCase();
+                        const match = 
+                            s.id.toLowerCase().includes(q) ||
+                            (s.tagNumber && s.tagNumber.toLowerCase().includes(q)) ||
+                            (s.location && s.location.toLowerCase().includes(q)) ||
+                            (s.inspector && s.inspector.toLowerCase().includes(q)) ||
+                            (s.structureType && s.structureType.toLowerCase().includes(q)) ||
+                            (s.notes && s.notes.toLowerCase().includes(q));
+                        if (!match) return false;
+                    }
+
+                    return true;
+                }).sort((a, b) => {
+                    let valA = a[sortBy] || '';
+                    let valB = b[sortBy] || '';
+                    if (sortOrder === 'asc') return valA > valB ? 1 : -1;
+                    return valA < valB ? 1 : -1;
+                });
+            }, [scaffolds, statusFilter, healthFilter, typeFilter, searchQuery, sortBy, sortOrder]);
+
+            // Paginated items
+            const totalPages = Math.ceil(filteredScaffolds.length / itemsPerPage) || 1;
+            const paginatedItems = useMemo(() => {
+                const start = (currentPage - 1) * itemsPerPage;
+                return filteredScaffolds.slice(start, start + itemsPerPage);
+            }, [filteredScaffolds, currentPage]);
+
+            return (
+                <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+                    {/* Top Navigation Bar */}
+                    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-sky-100 shadow-xs px-4 lg:px-8 py-3.5">
+                        <div className="flex flex-wrap items-center justify-between gap-3 max-w-7xl mx-auto">
+                            {/* Brand & Page Context */}
+                            <div className="flex items-center gap-3">
+                                <a 
+                                    href="mapping.html" 
+                                    className="px-3 py-2 rounded-xl text-brand-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 transition flex items-center gap-1.5 text-xs font-bold shadow-2xs"
+                                    title="Switch to Greenfield Visual Map (mapping.html)"
+                                >
+                                    <i data-lucide="map" className="w-4 h-4 text-brand-600"></i>
+                                    <span>Visual Map (GIS)</span>
+                                </a>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="font-extrabold text-base tracking-tight text-slate-900">
+                                            Scaff<span className="text-brand-600">Tech</span> <span className="text-xs font-semibold text-slate-500 uppercase">Database</span>
+                                        </h1>
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 text-brand-700 border border-brand-200">
+                                            Data Center & HSE
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-medium">ScaffTech Enterprise Database • Realtime HSE Compliance & Multi-User CRUD</p>
+                                </div>
+                            </div>
+
+                            {/* Status Indicator & Main Actions */}
+                            <div className="flex items-center gap-2.5">
+                                {/* Supabase Live Status Badge */}
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                                    supabaseStatus === 'CONNECTED'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                    : 'bg-rose-50 text-rose-800 border-rose-300'
+                                }`}>
+                                    <span className={`w-2 h-2 rounded-full ${
+                                        supabaseStatus === 'CONNECTED' ? 'bg-emerald-500 animate-pulse-dot' :
+                                        supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING' ? 'bg-amber-500' : 'bg-rose-500'
+                                    }`}></span>
+                                    <span className="hidden md:inline">{supabaseStatusMsg}</span>
+                                    <span className="md:hidden">Supabase</span>
+                                    <button 
+                                        onClick={() => fetchCloudData()} 
+                                        disabled={isSyncing}
+                                        className="ml-1 text-slate-500 hover:text-brand-600 p-0.5"
+                                        title="Reload from Supabase Cloud"
+                                    >
+                                        <i data-lucide="refresh-cw" className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`}></i>
+                                    </button>
+                                </div>
+
+                                {/* Export Excel */}
+                                <button
+                                    onClick={handleExportExcel}
+                                    className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl transition shadow-xs text-xs flex items-center gap-1.5 font-bold"
+                                    title="Export Scaffold Table to Excel (.xlsx)"
+                                >
+                                    <i data-lucide="file-spreadsheet" className="w-4 h-4 text-emerald-600"></i>
+                                    <span className="hidden sm:inline">Export Excel</span>
+                                </button>
+
+                                {/* Add New Scaffold Button */}
+                                <button
+                                    onClick={() => {
+                                        const newId = `SCF-${Math.floor(100 + Math.random() * 900)}`;
+                                        setEditingScaffold({
+                                            id: newId,
+                                            tagNumber: `TAG-${Math.floor(100 + Math.random() * 900)}`,
+                                            location: 'SUB 524',
+                                            type: 'POINT',
+                                            status: 'BUILDING',
+                                            x: 21.2,
+                                            y: 12.5,
+                                            installDate: getFormattedDate(0),
+                                            lastInspection: getFormattedDate(0),
+                                            targetDismantleDate: getFormattedDate(14),
+                                            actualDismantleDate: '',
+                                            inspector: 'Field HSE Inspector',
+                                            notes: '',
+                                            structureType: 'Independent Tower',
+                                            heightMeters: '6m',
+                                            lengthMeters: '-'
+                                        });
+                                        setModalMode('NEW');
+                                        setShowModal(true);
+                                    }}
+                                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl transition shadow-md shadow-brand-500/20 text-xs flex items-center gap-1.5 font-bold"
+                                >
+                                    <i data-lucide="plus-circle" className="w-4 h-4"></i>
+                                    <span>Add Scaffold</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content Area */}
+                    <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6">
+                        {/* Executive KPI Stats Overview */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div className="bg-white p-3.5 rounded-2xl border border-sky-100 shadow-xs">
+                                <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-1">
+                                    <span>Total Units</span>
+                                    <i data-lucide="layers" className="w-4 h-4 text-brand-500"></i>
+                                </div>
+                                <div className="text-2xl font-black text-slate-900">{stats.total}</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">All site installations</div>
+                            </div>
+
+                            <div className="bg-white p-3.5 rounded-2xl border border-emerald-100 shadow-xs">
+                                <div className="flex items-center justify-between text-emerald-600 text-xs font-semibold mb-1">
+                                    <span>Active (Green)</span>
+                                    <i data-lucide="check-circle-2" className="w-4 h-4 text-emerald-500"></i>
+                                </div>
+                                <div className="text-2xl font-black text-emerald-700">{stats.active}</div>
+                                <div className="text-[10px] text-emerald-600/70 mt-0.5">Safe for site work</div>
+                            </div>
+
+                            <div className="bg-white p-3.5 rounded-2xl border border-amber-100 shadow-xs">
+                                <div className="flex items-center justify-between text-amber-600 text-xs font-semibold mb-1">
+                                    <span>Building</span>
+                                    <i data-lucide="hammer" className="w-4 h-4 text-amber-500"></i>
+                                </div>
+                                <div className="text-2xl font-black text-amber-700">{stats.building}</div>
+                                <div className="text-[10px] text-amber-600/70 mt-0.5">Erection phase</div>
+                            </div>
+
+                            <div className="bg-white p-3.5 rounded-2xl border border-rose-100 shadow-xs">
+                                <div className="flex items-center justify-between text-rose-600 text-xs font-semibold mb-1">
+                                    <span>Expired (&gt;7d)</span>
+                                    <i data-lucide="alert-octagon" className="w-4 h-4 text-rose-500"></i>
+                                </div>
+                                <div className="text-2xl font-black text-rose-700">{stats.expired}</div>
+                                <div className="text-[10px] text-rose-600/70 mt-0.5">Urgent HSE audit</div>
+                            </div>
+
+                            <div className="bg-white p-3.5 rounded-2xl border border-amber-100 shadow-xs">
+                                <div className="flex items-center justify-between text-amber-600 text-xs font-semibold mb-1">
+                                    <span>Critical (&lt;2d)</span>
+                                    <i data-lucide="clock" className="w-4 h-4 text-amber-500"></i>
+                                </div>
+                                <div className="text-2xl font-black text-amber-700">{stats.urgent}</div>
+                                <div className="text-[10px] text-amber-600/70 mt-0.5">Re-inspection due</div>
+                            </div>
+
+                            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                                    <span>Dismantled</span>
+                                    <i data-lucide="archive" className="w-4 h-4 text-slate-400"></i>
+                                </div>
+                                <div className="text-2xl font-black text-slate-700">{stats.dismantled}</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">Decommissioned</div>
+                            </div>
+                        </div>
+
+                        {/* Search & Filter Control Hub */}
+                        <div className="bg-white rounded-2xl border border-sky-100 shadow-xs p-4 space-y-3">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                {/* Search Bar */}
+                                <div className="relative flex-1 max-w-md">
+                                    <i data-lucide="search" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                                    <input 
+                                        type="text" 
+                                        value={searchQuery}
+                                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                        placeholder="Search by ID, Tag, Location, Inspector, or Notes..."
+                                        className="w-full pl-10 pr-4 py-2 border border-sky-200/80 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition"
+                                    />
+                                    {searchQuery && (
+                                        <button 
+                                            onClick={() => setSearchQuery('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                        >
+                                            <i data-lucide="x" className="w-3.5 h-3.5"></i>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Filter Dropdowns */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {/* HSE Health Condition Filter */}
+                                    <select
+                                        value={healthFilter}
+                                        onChange={(e) => { setHealthFilter(e.target.value); setCurrentPage(1); }}
+                                        className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer hover:border-brand-300 transition"
+                                    >
+                                        <option value="ALL">All HSE Conditions</option>
+                                        <option value="EXPIRED">🔴 Expired Only (&gt;7d)</option>
+                                        <option value="URGENT">🟡 Critical Only (&lt;2d)</option>
+                                        <option value="VALID">🟢 Valid Inspection Only</option>
+                                    </select>
+
+                                    {/* Type Filter */}
+                                    <select
+                                        value={typeFilter}
+                                        onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+                                        className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer hover:border-brand-300 transition"
+                                    >
+                                        <option value="ALL">All Construction Types</option>
+                                        <option value="POINT">Point Tower</option>
+                                        <option value="LINEAR">Linear Pipe Rack</option>
+                                    </select>
+
+                                    {/* Sort By */}
+                                    <select
+                                        value={`${sortBy}_${sortOrder}`}
+                                        onChange={(e) => {
+                                            const [field, order] = e.target.value.split('_');
+                                            setSortBy(field);
+                                            setSortOrder(order);
+                                        }}
+                                        className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none cursor-pointer hover:border-brand-300 transition"
+                                    >
+                                        <option value="lastInspection_asc">Sort: Oldest Inspection</option>
+                                        <option value="lastInspection_desc">Sort: Latest Inspection</option>
+                                        <option value="targetDismantleDate_asc">Sort: Nearest Dismantle</option>
+                                        <option value="id_asc">Sort: Scaffold ID (A-Z)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Status Filter Tab Pills */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 border-t border-sky-100 text-xs">
+                                {[
+                                    { id: 'ALL', label: 'All Scaffolds', count: scaffolds.length },
+                                    { id: 'ACTIVE', label: 'Active', count: stats.active },
+                                    { id: 'BUILDING', label: 'Building', count: stats.building },
+                                    { id: 'REQUESTED', label: 'Requested', count: stats.requested },
+                                    { id: 'EXPIRED', label: 'Expired', count: stats.expired },
+                                    { id: 'DISMANTLED', label: 'Dismantled', count: stats.dismantled }
+                                ].map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => { setStatusFilter(tab.id); setCurrentPage(1); }}
+                                        className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shrink-0 ${
+                                            statusFilter === tab.id
+                                            ? 'bg-brand-600 text-white shadow-xs'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        <span>{tab.label}</span>
+                                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                                            statusFilter === tab.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                                        }`}>
+                                            {tab.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Interactive Data Table */}
+                        <div className="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                    <thead className="bg-slate-50/80 border-b border-sky-100 text-slate-600 uppercase font-bold text-[10px] tracking-wider">
+                                        <tr>
+                                            <th className="px-4 py-3.5">Scaffold / Tag</th>
+                                            <th className="px-4 py-3.5">Location & Landmark</th>
+                                            <th className="px-4 py-3.5">HSE Status</th>
+                                            <th className="px-4 py-3.5">Inspection Health</th>
+                                            <th className="px-4 py-3.5">Target Dismantle</th>
+                                            <th className="px-4 py-3.5">Dimensions</th>
+                                            <th className="px-4 py-3.5">Inspector</th>
+                                            <th className="px-4 py-3.5 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-sky-50">
+                                        {paginatedItems.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="8" className="px-4 py-12 text-center text-slate-400">
+                                                    <i data-lucide="inbox" className="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                                                    <p className="font-semibold">No scaffolding records match current filters.</p>
+                                                    <p className="text-[11px] mt-0.5">Try adjusting your search query or resetting active filters.</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            paginatedItems.map((s) => {
+                                                const health = evaluateInspectionHealth(s);
+                                                const statusObj = STATUS_MAP[s.status] || STATUS_MAP.ACTIVE;
+                                                return (
+                                                    <tr 
+                                                        key={s.id} 
+                                                        className="hover:bg-sky-50/40 transition cursor-pointer group"
+                                                        onClick={() => setSelectedScaffold(s)}
+                                                    >
+                                                        {/* ID & Tag */}
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`w-2 h-2 rounded-full shrink-0 ${statusObj.dot}`}></span>
+                                                                <div>
+                                                                    <div className="font-bold text-slate-900 group-hover:text-brand-600 transition flex items-center gap-1.5">
+                                                                        <span>{s.id}</span>
+                                                                        {s.type === 'LINEAR' && (
+                                                                            <span className="px-1.5 py-0.2 rounded text-[9px] bg-sky-100 text-sky-700 font-mono font-bold">Line</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-[11px] font-mono text-slate-500 font-semibold">{s.tagNumber}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Location */}
+                                                        <td className="px-4 py-3">
+                                                            <div className="font-semibold text-slate-800">{s.location}</div>
+                                                            <div className="text-[11px] text-slate-400">{s.structureType || 'General Scaffold'}</div>
+                                                        </td>
+
+                                                        {/* HSE Status */}
+                                                        <td className="px-4 py-3">
+                                                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border inline-flex items-center gap-1.5 ${statusObj.badge}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${statusObj.dot}`}></span>
+                                                                <span>{statusObj.label}</span>
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Inspection Health */}
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                                                                    health.tone === 'rose' ? 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse' :
+                                                                    health.tone === 'amber' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                                                    'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                                }`}>
+                                                                    {health.healthLabel}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400 mt-0.5">Inspected: {s.lastInspection || '-'}</div>
+                                                        </td>
+
+                                                        {/* Target Dismantle */}
+                                                        <td className="px-4 py-3">
+                                                            <div className="font-medium text-slate-700">{s.targetDismantleDate || '-'}</div>
+                                                        </td>
+
+                                                        {/* Dimension */}
+                                                        <td className="px-4 py-3 font-mono text-[11px] text-slate-600">
+                                                            <div>H: {s.heightMeters || '-'}</div>
+                                                            {s.type === 'LINEAR' && <div>L: {s.lengthMeters || '-'}</div>}
+                                                        </td>
+
+                                                        {/* Inspector */}
+                                                        <td className="px-4 py-3">
+                                                            <div className="text-slate-800 font-medium">{s.inspector || '-'}</div>
+                                                        </td>
+
+                                                        {/* Actions with Clear Text Labels */}
+                                                        <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                {/* Quick Accept Inspection */}
+                                                                <button
+                                                                    onClick={() => handlePassInspection(s.id)}
+                                                                    className="p-1.5 text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                                                                    title="Pass 7-Day HSE Inspection (Set Active)"
+                                                                >
+                                                                    <i data-lucide="check" className="w-3.5 h-3.5"></i>
+                                                                    <span className="hidden xl:inline">Pass</span>
+                                                                </button>
+
+                                                                {/* View on Map */}
+                                                                <a
+                                                                    href="mapping.html"
+                                                                    className="p-1.5 text-brand-700 hover:text-brand-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                                                                    title="Locate on Greenfield Visual Map"
+                                                                >
+                                                                    <i data-lucide="map-pin" className="w-3.5 h-3.5 text-brand-600"></i>
+                                                                    <span className="hidden xl:inline">Map</span>
+                                                                </a>
+
+                                                                {/* Edit */}
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingScaffold(s);
+                                                                        setModalMode('EDIT');
+                                                                        setShowModal(true);
+                                                                    }}
+                                                                    className="p-1.5 text-slate-700 hover:text-brand-600 bg-white hover:bg-sky-50 border border-slate-200 rounded-lg transition font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                                                                    title="Edit Scaffold Record"
+                                                                >
+                                                                    <i data-lucide="pencil" className="w-3.5 h-3.5 text-slate-500"></i>
+                                                                    <span className="hidden xl:inline">Edit</span>
+                                                                </button>
+
+                                                                {/* Delete */}
+                                                                <button
+                                                                    onClick={() => handleDelete(s.id)}
+                                                                    className="p-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                                                                    title="Delete Scaffold"
+                                                                >
+                                                                    <i data-lucide="trash-2" className="w-3.5 h-3.5 text-rose-500"></i>
+                                                                    <span className="hidden xl:inline">Delete</span>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination Footer */}
+                            <div className="px-4 py-3 bg-slate-50/80 border-t border-sky-100 flex items-center justify-between text-xs text-slate-500">
+                                <div>
+                                    Showing <b>{paginatedItems.length}</b> of <b>{filteredScaffolds.length}</b> scaffolds
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                                        disabled={currentPage === 1}
+                                        className="p-1.5 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-40 transition"
+                                    >
+                                        <i data-lucide="chevron-left" className="w-4 h-4"></i>
+                                    </button>
+                                    <span className="px-2 font-mono font-bold text-slate-700">
+                                        Page {currentPage} / {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                                        disabled={currentPage === totalPages}
+                                        className="p-1.5 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-40 transition"
+                                    >
+                                        <i data-lucide="chevron-right" className="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* DETAIL PREVIEW DRAWER / MODAL */}
+                    {selectedScaffold && (
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl border border-sky-100 max-w-lg w-full p-6 text-slate-800 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="flex justify-between items-start pb-3 border-b border-sky-100 mb-4">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-extrabold text-base text-slate-900">{selectedScaffold.id}</h3>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${(STATUS_MAP[selectedScaffold.status] || STATUS_MAP.ACTIVE).badge}`}>
+                                                {(STATUS_MAP[selectedScaffold.status] || STATUS_MAP.ACTIVE).label}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs font-mono text-slate-500 font-semibold">{selectedScaffold.tagNumber}</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => setSelectedScaffold(null)}
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                    >
+                                        <i data-lucide="x" className="w-4 h-4"></i>
+                                    </button>
+                                </div>
+
+                                {/* HSE Health Banner */}
+                                {(() => {
+                                    const h = evaluateInspectionHealth(selectedScaffold);
+                                    return (
+                                        <div className={`p-3 rounded-xl border mb-4 flex items-center justify-between text-xs ${
+                                            h.tone === 'rose' ? 'bg-rose-50 border-rose-200 text-rose-900' :
+                                            h.tone === 'amber' ? 'bg-amber-50 border-amber-200 text-amber-900' :
+                                            'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                        }`}>
+                                            <div>
+                                                <div className="font-bold">{h.healthLabel}</div>
+                                                <div className="text-[11px] opacity-80">Last Inspection: {selectedScaffold.lastInspection || '-'}</div>
+                                            </div>
+                                            <button
+                                                onClick={() => handlePassInspection(selectedScaffold.id)}
+                                                className="px-3 py-1.5 bg-white border border-slate-200 hover:border-emerald-400 font-bold rounded-lg text-emerald-700 text-xs shadow-xs hover:bg-emerald-50 transition"
+                                            >
+                                                Pass Inspection (7 Days)
+                                            </button>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Detail Grid */}
+                                <div className="grid grid-cols-2 gap-3 text-xs mb-4">
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="text-slate-400 text-[10px] font-bold">LOCATION & LANDMARK</div>
+                                        <div className="font-bold text-slate-800 mt-0.5">{selectedScaffold.location}</div>
+                                    </div>
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="text-slate-400 text-[10px] font-bold">STRUCTURE TYPE</div>
+                                        <div className="font-bold text-slate-800 mt-0.5">{selectedScaffold.structureType || '-'}</div>
+                                    </div>
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="text-slate-400 text-[10px] font-bold">DIMENSIONS (HEIGHT / LENGTH)</div>
+                                        <div className="font-mono font-bold text-slate-800 mt-0.5">
+                                            {selectedScaffold.heightMeters || '-'} / {selectedScaffold.lengthMeters || '-'}
+                                        </div>
+                                    </div>
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="text-slate-400 text-[10px] font-bold">TARGET DISMANTLE</div>
+                                        <div className="font-bold text-slate-800 mt-0.5">{selectedScaffold.targetDismantleDate || '-'}</div>
+                                    </div>
+                                    <div className="col-span-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="text-slate-400 text-[10px] font-bold">INSPECTOR HSE</div>
+                                        <div className="font-semibold text-slate-800 mt-0.5">{selectedScaffold.inspector || '-'}</div>
+                                    </div>
+                                    {selectedScaffold.notes && (
+                                        <div className="col-span-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <div className="text-slate-400 text-[10px] font-bold">FIELD OBSERVATION NOTES</div>
+                                            <div className="text-slate-700 mt-0.5 leading-relaxed">{selectedScaffold.notes}</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Status Switcher Buttons */}
+                                <div className="border-t border-sky-100 pt-3 mb-4">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Quick Status Switch</label>
+                                    <div className="grid grid-cols-4 gap-1.5 text-xs">
+                                        {['ACTIVE', 'BUILDING', 'REQUESTED', 'DISMANTLED'].map(st => (
+                                            <button
+                                                key={st}
+                                                onClick={() => handleQuickStatusChange(selectedScaffold.id, st)}
+                                                className={`py-1.5 px-2 rounded-lg font-bold border transition text-center text-[11px] ${
+                                                    selectedScaffold.status === st
+                                                    ? 'bg-brand-600 text-white border-brand-600'
+                                                    : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'
+                                                }`}
+                                            >
+                                                {st}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center justify-between pt-2 border-t border-sky-100">
+                                    <a
+                                        href="mapping.html"
+                                        className="text-brand-600 hover:text-brand-700 font-bold text-xs flex items-center gap-1"
+                                    >
+                                        <i data-lucide="map" className="w-3.5 h-3.5"></i>
+                                        <span>View on Visual Map</span>
+                                    </a>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setEditingScaffold(selectedScaffold);
+                                                setModalMode('EDIT');
+                                                setShowModal(true);
+                                            }}
+                                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition"
+                                        >
+                                            Edit Record
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handleDelete(selectedScaffold.id);
+                                            }}
+                                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs border border-rose-200 transition"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* FORM CREATE / EDIT MODAL */}
+                    {showModal && editingScaffold && (
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl border border-sky-100 max-w-xl w-full p-6 text-slate-800 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="flex justify-between items-center pb-3 border-b border-sky-100 mb-4">
+                                    <div>
+                                        <h3 className="font-bold text-sm text-slate-900">
+                                            {modalMode === 'NEW' ? 'Register New Scaffold' : `Edit Scaffold: ${editingScaffold.id}`}
+                                        </h3>
+                                        <p className="text-[11px] text-slate-400">Enter scaffolding specifications, dimensions, and HSE lifecycle</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => setShowModal(false)}
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                    >
+                                        <i data-lucide="x" className="w-4 h-4"></i>
+                                    </button>
+                                </div>
+
+                                <form onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const fd = new FormData(e.target);
+                                    handleSaveModal({
+                                        ...editingScaffold,
+                                        id: fd.get('id') || editingScaffold.id,
+                                        tagNumber: fd.get('tagNumber'),
+                                        location: fd.get('location'),
+                                        type: fd.get('type') || editingScaffold.type || 'POINT',
+                                        status: fd.get('status'),
+                                        structureType: fd.get('structureType'),
+                                        heightMeters: fd.get('heightMeters'),
+                                        lengthMeters: fd.get('lengthMeters'),
+                                        installDate: fd.get('installDate'),
+                                        lastInspection: fd.get('lastInspection'),
+                                        targetDismantleDate: fd.get('targetDismantleDate'),
+                                        inspector: fd.get('inspector'),
+                                        notes: fd.get('notes')
+                                    });
+                                }}>
+                                    <div className="space-y-3 text-xs max-h-[60vh] overflow-y-auto pr-1">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">ID Scaffolding *</label>
+                                                <input 
+                                                    name="id" 
+                                                    defaultValue={editingScaffold.id} 
+                                                    required 
+                                                    className="w-full px-3 py-2 border border-sky-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Tag Number *</label>
+                                                <input 
+                                                    name="tagNumber" 
+                                                    defaultValue={editingScaffold.tagNumber} 
+                                                    required 
+                                                    className="w-full px-3 py-2 border border-sky-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Mandatory Location Selection */}
+                                        <div className="bg-sky-50/70 p-3.5 rounded-xl border border-sky-200">
+                                            <label className="block text-slate-800 font-bold mb-1 text-xs">
+                                                Greenfield Map Location <span className="text-rose-600">* (Required: Choose from Official Landmarks)</span>
+                                            </label>
+                                            
+                                            {editingScaffold.type === 'LINEAR' ? (
+                                                <div className="space-y-2.5">
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <span className="block text-[11px] font-bold text-brand-700 mb-1">From Landmark (Start):</span>
+                                                            <select
+                                                                id="db_linear_from"
+                                                                defaultValue={editingScaffold.location?.includes('->') ? editingScaffold.location.split('->')[0].trim() : (editingScaffold.location || '')}
+                                                                onChange={(e) => {
+                                                                    const fromVal = e.target.value;
+                                                                    const toVal = document.getElementById('db_linear_to')?.value || '';
+                                                                    const locInput = document.getElementById('db_location_input');
+                                                                    if (locInput) locInput.value = `${fromVal} -> ${toVal}`;
+                                                                    const fromObj = MAP_RED_LOCATIONS.find(l => l.name === fromVal);
+                                                                    const toObj = MAP_RED_LOCATIONS.find(l => l.name === toVal);
+                                                                    if (fromObj && toObj) {
+                                                                        setEditingScaffold(prev => ({
+                                                                            ...prev,
+                                                                            points: [{ x: fromObj.x, y: fromObj.y }, { x: toObj.x, y: toObj.y }]
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                                className="w-full px-2.5 py-1.5 bg-white border border-sky-200 rounded-lg text-slate-700 font-semibold outline-none cursor-pointer text-xs"
+                                                            >
+                                                                <option value="">-- Select Start Landmark --</option>
+                                                                {MAP_RED_LOCATIONS.map(loc => (
+                                                                    <option key={`db-from-${loc.id}`} value={loc.name}>
+                                                                        {loc.name} ({loc.area})
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <span className="block text-[11px] font-bold text-brand-700 mb-1">To Landmark (End):</span>
+                                                            <select
+                                                                id="db_linear_to"
+                                                                defaultValue={editingScaffold.location?.includes('->') ? editingScaffold.location.split('->')[1].trim() : ''}
+                                                                onChange={(e) => {
+                                                                    const fromVal = document.getElementById('db_linear_from')?.value || '';
+                                                                    const toVal = e.target.value;
+                                                                    const locInput = document.getElementById('db_location_input');
+                                                                    if (locInput) locInput.value = `${fromVal} -> ${toVal}`;
+                                                                    const fromObj = MAP_RED_LOCATIONS.find(l => l.name === fromVal);
+                                                                    const toObj = MAP_RED_LOCATIONS.find(l => l.name === toVal);
+                                                                    if (fromObj && toObj) {
+                                                                        setEditingScaffold(prev => ({
+                                                                            ...prev,
+                                                                            points: [{ x: fromObj.x, y: fromObj.y }, { x: toObj.x, y: toObj.y }]
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                                className="w-full px-2.5 py-1.5 bg-white border border-sky-200 rounded-lg text-slate-700 font-semibold outline-none cursor-pointer text-xs"
+                                                            >
+                                                                <option value="">-- Select End Landmark --</option>
+                                                                {MAP_RED_LOCATIONS.map(loc => (
+                                                                    <option key={`db-to-${loc.id}`} value={loc.name}>
+                                                                        {loc.name} ({loc.area})
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <input 
+                                                        id="db_location_input"
+                                                        name="location" 
+                                                        defaultValue={editingScaffold.location} 
+                                                        required 
+                                                        placeholder="Example: UNIT 543 -> UNIT 544"
+                                                        className="w-full px-3 py-1.5 bg-white border border-sky-300 rounded-lg font-mono font-bold text-brand-800 outline-none text-xs" 
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    <select
+                                                        id="db_point_select"
+                                                        defaultValue={MAP_RED_LOCATIONS.some(l => l.name === editingScaffold.location) ? editingScaffold.location : ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            const locInput = document.getElementById('db_location_input');
+                                                            if (locInput) locInput.value = val;
+                                                            const match = MAP_RED_LOCATIONS.find(l => l.name === val);
+                                                            if (match) {
+                                                                setEditingScaffold(prev => ({
+                                                                    ...prev,
+                                                                    x: match.x,
+                                                                    y: match.y
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className="w-full px-3 py-2 bg-white border border-sky-200 rounded-xl text-slate-700 font-bold outline-none cursor-pointer text-xs"
+                                                    >
+                                                        <option value="">-- Select Greenfield Landmark --</option>
+                                                        {MAP_RED_LOCATIONS.map(loc => (
+                                                            <option key={`db-point-${loc.id}`} value={loc.name}>
+                                                                {loc.name} ({loc.type} - {loc.area})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <input 
+                                                        id="db_location_input"
+                                                        name="location" 
+                                                        defaultValue={editingScaffold.location} 
+                                                        required 
+                                                        placeholder="Enter location description..."
+                                                        className="w-full px-3 py-1.5 bg-white border border-sky-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Coordinate Lock Display */}
+                                            <div className="mt-2.5 pt-2 border-t border-sky-200/80 flex items-center justify-between text-[11px]">
+                                                <span className="text-slate-600 font-semibold flex items-center gap-1">
+                                                    <i data-lucide="crosshair" className="w-3.5 h-3.5 text-brand-600"></i>
+                                                    <span>Canvas Coordinates Locked:</span>
+                                                </span>
+                                                {editingScaffold.type === 'LINEAR' ? (
+                                                    <span className="font-mono font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                                                        {editingScaffold.points?.length || 2} Route Points
+                                                    </span>
+                                                ) : (
+                                                    <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                        X: {Number(editingScaffold.x || 21.2).toFixed(1)}%, Y: {Number(editingScaffold.y || 12.5).toFixed(1)}%
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Status HSE</label>
+                                                <select 
+                                                    name="status" 
+                                                    defaultValue={editingScaffold.status}
+                                                    className="w-full px-3 py-2 border border-sky-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none"
+                                                >
+                                                    <option value="ACTIVE">Active (Green Tag)</option>
+                                                    <option value="BUILDING">Building (Erection)</option>
+                                                    <option value="REQUESTED">Requested (Permit)</option>
+                                                    <option value="EXPIRED">Expired (Kedaluwarsa)</option>
+                                                    <option value="DISMANTLED">Dismantled (Dibongkar)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Construction Type</label>
+                                                <select 
+                                                    name="type" 
+                                                    defaultValue={editingScaffold.type || 'POINT'}
+                                                    onChange={(e) => {
+                                                        const newType = e.target.value;
+                                                        setEditingScaffold(prev => ({
+                                                            ...prev,
+                                                            type: newType,
+                                                            points: newType === 'LINEAR' ? [{ x: 34.2, y: 42.3 }, { x: 44.5, y: 42.1 }] : undefined,
+                                                            x: newType === 'POINT' ? (prev.x || 21.2) : undefined,
+                                                            y: newType === 'POINT' ? (prev.y || 12.5) : undefined
+                                                        }));
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-sky-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none"
+                                                >
+                                                    <option value="POINT">Single Tower (Point)</option>
+                                                    <option value="LINEAR">Linear Pipe Rack (Route)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-slate-600 font-bold mb-1">Tipe Struktur</label>
+                                            <input 
+                                                name="structureType" 
+                                                defaultValue={editingScaffold.structureType || 'Independent Tower'} 
+                                                className="w-full px-3 py-2 border border-sky-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Height (meters)</label>
+                                                <input 
+                                                    name="heightMeters" 
+                                                    defaultValue={editingScaffold.heightMeters || '6m'} 
+                                                    className="w-full px-3 py-2 border border-sky-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Span Length (meters)</label>
+                                                <input 
+                                                    name="lengthMeters" 
+                                                    defaultValue={editingScaffold.lengthMeters || '-'} 
+                                                    className="w-full px-3 py-2 border border-sky-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Tgl Pasang</label>
+                                                <input 
+                                                    type="date"
+                                                    name="installDate" 
+                                                    defaultValue={editingScaffold.installDate || getFormattedDate(0)} 
+                                                    className="w-full px-2 py-1.5 border border-sky-200 rounded-xl text-[11px] focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Inspection Date *</label>
+                                                <input 
+                                                    type="date"
+                                                    name="lastInspection" 
+                                                    defaultValue={editingScaffold.lastInspection || getFormattedDate(0)} 
+                                                    required
+                                                    className="w-full px-2 py-1.5 border border-sky-200 rounded-xl text-[11px] focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-slate-600 font-bold mb-1">Target Bongkar</label>
+                                                <input 
+                                                    type="date"
+                                                    name="targetDismantleDate" 
+                                                    defaultValue={editingScaffold.targetDismantleDate || getFormattedDate(14)} 
+                                                    className="w-full px-2 py-1.5 border border-sky-200 rounded-xl text-[11px] focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-slate-600 font-bold mb-1">Inspector HSE</label>
+                                            <input 
+                                                name="inspector" 
+                                                defaultValue={editingScaffold.inspector || 'Field HSE Inspector'} 
+                                                className="w-full px-3 py-2 border border-sky-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-slate-600 font-bold mb-1">Field Notes & Observations</label>
+                                            <textarea 
+                                                name="notes" 
+                                                rows="2"
+                                                defaultValue={editingScaffold.notes || ''} 
+                                                placeholder="Permit number, special conditions, load capacity..."
+                                                className="w-full px-3 py-2 border border-sky-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none" 
+                                            ></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-end gap-2.5 pt-4 mt-4 border-t border-sky-100">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowModal(false)}
+                                            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/25 transition"
+                                        >
+                                            {modalMode === 'NEW' ? 'Save New Scaffold' : 'Save Changes'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Toast Alert */}
+                    {toast && (
+                        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-bottom duration-200 ${
+                            toast.type === 'success' ? 'bg-emerald-600 border-emerald-500 text-white' :
+                            toast.type === 'warning' ? 'bg-amber-500 border-amber-400 text-white' :
+                            toast.type === 'danger' ? 'bg-rose-600 border-rose-500 text-white' :
+                            'bg-slate-900 border-slate-800 text-white'
+                        }`}>
+                            <i data-lucide={toast.type === 'success' ? 'check-circle' : toast.type === 'danger' ? 'alert-octagon' : toast.type === 'warning' ? 'alert-triangle' : 'info'} className="w-5 h-5 shrink-0"></i>
+                            <span className="text-xs font-semibold leading-relaxed">{toast.message}</span>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
