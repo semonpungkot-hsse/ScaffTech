@@ -46,6 +46,9 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Supabase JS Client v2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- QR Code & Scanner Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         @keyframes pulse-dot {
             0%, 100% { opacity: 1; transform: scale(1); }
@@ -67,6 +70,24 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #60a5fa;
+        }
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
+            #printable-scafftag, #printable-scafftag * {
+                visibility: visible !important;
+            }
+            #printable-scafftag {
+                position: fixed !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 90mm !important;
+                box-shadow: none !important;
+                border: 3px solid #0f172a !important;
+                margin: 0 !important;
+            }
         }
     </style>
 </head>
@@ -198,6 +219,33 @@
             lengthMeters: row.length_meters || row.lengthMeters || ''
         });
 
+        // Guaranteed Unique Scaffold ID Generator (Anti-Duplicate)
+        const generateUniqueScaffoldId = (type = 'POINT', currentList = []) => {
+            const prefix = type === 'LINEAR' ? 'SCF-LIN-26-' : 'SCF-26-';
+            let maxNum = 0;
+            (currentList || []).forEach(s => {
+                if (!s || !s.id) return;
+                const idStr = String(s.id).toUpperCase();
+                if (idStr.startsWith(prefix)) {
+                    const numPart = parseInt(idStr.replace(prefix, ''), 10);
+                    if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+                } else if (type === 'POINT' && idStr.startsWith('SCF-') && !idStr.startsWith('SCF-LIN-')) {
+                    const rawNum = parseInt(idStr.replace('SCF-', ''), 10);
+                    if (!isNaN(rawNum) && rawNum > maxNum) maxNum = rawNum;
+                } else if (type === 'LINEAR' && idStr.startsWith('SCF-LIN-')) {
+                    const rawNum = parseInt(idStr.replace('SCF-LIN-', ''), 10);
+                    if (!isNaN(rawNum) && rawNum > maxNum) maxNum = rawNum;
+                }
+            });
+            const nextNum = maxNum + 1;
+            let candidate = `${prefix}${String(nextNum).padStart(4, '0')}`;
+            let counter = 0;
+            while ((currentList || []).some(s => s && s.id && s.id.toUpperCase() === candidate.toUpperCase()) && counter < 2000) {
+                candidate = `${prefix}${String(nextNum + (++counter)).padStart(4, '0')}`;
+            }
+            return candidate;
+        };
+
         function App() {
             // Main Dataset
             const [scaffolds, setScaffolds] = useState(() => {
@@ -228,6 +276,10 @@
             const [modalMode, setModalMode] = useState('NEW'); // NEW, EDIT
             const [editingScaffold, setEditingScaffold] = useState(null);
             const [toast, setToast] = useState(null);
+
+            // QR Scafftag & Camera Scanner Modal States
+            const [qrModalScaffold, setQrModalScaffold] = useState(null);
+            const [showScannerModal, setShowScannerModal] = useState(false);
 
             // Pagination
             const [currentPage, setCurrentPage] = useState(1);
@@ -313,13 +365,81 @@
                 };
             }, [supabaseClient]);
 
+            // Check URL search parameters on mount
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const q = params.get('search') || params.get('id') || params.get('scaffoldId');
+                if (q) {
+                    setSearchQuery(q);
+                    const found = scaffolds.find(s => s.id.toLowerCase() === q.toLowerCase());
+                    if (found) {
+                        setSelectedScaffold(found);
+                    }
+                }
+            }, []);
+
             // Save to localStorage whenever scaffolds change
             useEffect(() => {
                 localStorage.setItem('svt_scaffolds_v5_clean', JSON.stringify(scaffolds));
                 if (window.lucide) {
                     window.lucide.createIcons();
                 }
-            }, [scaffolds, selectedScaffold, showModal, statusFilter, healthFilter, currentPage]);
+            }, [scaffolds, selectedScaffold, showModal, statusFilter, healthFilter, currentPage, qrModalScaffold, showScannerModal]);
+
+            // Handle Camera QR Scanner lifecycle
+            const handleQrCodeDetected = (scannedText) => {
+                setShowScannerModal(false);
+                let targetId = (scannedText || '').trim();
+                if (targetId.includes('=')) {
+                    const parts = targetId.split('=');
+                    targetId = parts[parts.length - 1];
+                }
+                setSearchQuery(targetId);
+                const matched = scaffolds.find(s => 
+                    s.id.toLowerCase() === targetId.toLowerCase() || 
+                    s.tagNumber.toLowerCase() === targetId.toLowerCase()
+                );
+                if (matched) {
+                    setSelectedScaffold(matched);
+                    showNotification(`Scafftag Verified! Found ${matched.id} (${matched.status})`, 'success');
+                } else {
+                    showNotification(`Scanned tag "${targetId}" not found in database.`, 'warning');
+                }
+            };
+
+            useEffect(() => {
+                let html5QrCode = null;
+                if (showScannerModal && window.Html5Qrcode) {
+                    const timeout = setTimeout(() => {
+                        try {
+                            html5QrCode = new window.Html5Qrcode("qr-camera-stream");
+                            html5QrCode.start(
+                                { facingMode: "environment" },
+                                { fps: 10, qrbox: { width: 220, height: 220 } },
+                                (decodedText) => {
+                                    html5QrCode.stop().then(() => {
+                                        handleQrCodeDetected(decodedText);
+                                    }).catch(() => {
+                                        handleQrCodeDetected(decodedText);
+                                    });
+                                },
+                                () => {}
+                            ).catch(err => {
+                                console.warn("Camera start error (check camera permission):", err);
+                            });
+                        } catch (err) {
+                            console.warn("Scanner init exception:", err);
+                        }
+                    }, 300);
+
+                    return () => {
+                        clearTimeout(timeout);
+                        if (html5QrCode && html5QrCode.isScanning) {
+                            html5QrCode.stop().catch(() => {});
+                        }
+                    };
+                }
+            }, [showScannerModal]);
 
             // HSE Quick Verification Action
             const handlePassInspection = async (scaffoldId) => {
@@ -336,7 +456,7 @@
                 }
 
                 // Cloud update
-                if (supabaseClient && supabaseStatus === 'CONNECTED') {
+                if (supabaseClient) {
                     try {
                         const target = updatedList.find(s => s.id === scaffoldId);
                         await supabaseClient.from('scaffolds').upsert(toDbRecord(target), { onConflict: 'id' });
@@ -355,9 +475,13 @@
                     setSelectedScaffold(prev => ({ ...prev, status: newStatus }));
                 }
 
-                if (supabaseClient && supabaseStatus === 'CONNECTED') {
-                    const target = updatedList.find(s => s.id === scaffoldId);
-                    await supabaseClient.from('scaffolds').upsert(toDbRecord(target), { onConflict: 'id' });
+                if (supabaseClient) {
+                    try {
+                        const target = updatedList.find(s => s.id === scaffoldId);
+                        await supabaseClient.from('scaffolds').upsert(toDbRecord(target), { onConflict: 'id' });
+                    } catch (e) {
+                        console.error('Quick status cloud update error:', e);
+                    }
                 }
                 showNotification(`Status of ${scaffoldId} changed to ${newStatus}.`, 'info');
             };
@@ -382,12 +506,27 @@
                     data.points = [{ x: p1.x, y: p1.y }, { x: p2.x, y: p2.y }];
                 }
 
+                // Anti-Duplicate ID Check
+                if (modalMode === 'NEW') {
+                    const duplicate = scaffolds.find(s => s.id.toLowerCase() === (data.id || '').toLowerCase());
+                    if (duplicate) {
+                        showNotification(`Scaffold ID "${data.id}" already exists! Please use a unique number.`, 'danger');
+                        return;
+                    }
+                } else if (modalMode === 'EDIT' && editingScaffold) {
+                    const duplicate = scaffolds.find(s => s.id.toLowerCase() === (data.id || '').toLowerCase() && s.id !== editingScaffold.id);
+                    if (duplicate) {
+                        showNotification(`Cannot save: Scaffold ID "${data.id}" is already used by another unit!`, 'danger');
+                        return;
+                    }
+                }
+
                 let updatedList;
                 if (modalMode === 'NEW') {
                     updatedList = [data, ...scaffolds];
                     showNotification(`Scaffold ${data.id} successfully registered!`, 'success');
                 } else {
-                    updatedList = scaffolds.map(s => s.id === data.id ? data : s);
+                    updatedList = scaffolds.map(s => s.id === (editingScaffold ? editingScaffold.id : data.id) ? data : s);
                     showNotification(`Record ${data.id} successfully updated!`, 'success');
                 }
                 setScaffolds(updatedList);
@@ -396,9 +535,15 @@
                 setEditingScaffold(null);
 
                 // Cloud sync
-                if (supabaseClient && supabaseStatus === 'CONNECTED') {
+                if (supabaseClient) {
                     try {
-                        await supabaseClient.from('scaffolds').upsert(toDbRecord(data), { onConflict: 'id' });
+                        const { error } = await supabaseClient.from('scaffolds').upsert(toDbRecord(data), { onConflict: 'id' });
+                        if (error) {
+                            console.error('Save cloud error:', error);
+                            showNotification(`Saved locally, cloud note: ${error.message}`, 'warning');
+                        } else {
+                            setSupabaseStatus('CONNECTED');
+                        }
                     } catch (e) {
                         console.error('Save cloud error:', e);
                     }
@@ -411,7 +556,7 @@
                 setScaffolds(prev => prev.filter(s => s.id !== id));
                 if (selectedScaffold?.id === id) setSelectedScaffold(null);
 
-                if (supabaseClient && supabaseStatus === 'CONNECTED') {
+                if (supabaseClient) {
                     try {
                         await supabaseClient.from('scaffolds').delete().eq('id', id);
                     } catch (e) {
@@ -580,10 +725,11 @@
                                 {/* Add New Scaffold Button */}
                                 <button
                                     onClick={() => {
-                                        const newId = `SCF-${Math.floor(100 + Math.random() * 900)}`;
+                                        const newId = generateUniqueScaffoldId('POINT', scaffolds);
+                                        const numPart = newId.replace('SCF-26-', '').replace('SCF-', '');
                                         setEditingScaffold({
                                             id: newId,
-                                            tagNumber: `TAG-${Math.floor(100 + Math.random() * 900)}`,
+                                            tagNumber: `TAG-GRN-${numPart}`,
                                             location: 'SUB 524',
                                             type: 'POINT',
                                             status: 'BUILDING',
@@ -673,24 +819,34 @@
                         {/* Search & Filter Control Hub */}
                         <div className="bg-white rounded-2xl border border-sky-100 shadow-xs p-4 space-y-3">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                {/* Search Bar */}
-                                <div className="relative flex-1 max-w-md">
-                                    <i data-lucide="search" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-                                    <input 
-                                        type="text" 
-                                        value={searchQuery}
-                                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                        placeholder="Search by ID, Tag, Location, Inspector, or Notes..."
-                                        className="w-full pl-10 pr-4 py-2 border border-sky-200/80 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition"
-                                    />
-                                    {searchQuery && (
-                                        <button 
-                                            onClick={() => setSearchQuery('')}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                        >
-                                            <i data-lucide="x" className="w-3.5 h-3.5"></i>
-                                        </button>
-                                    )}
+                                {/* Search Bar & QR Camera Scan Button */}
+                                <div className="flex items-center gap-2 flex-1 max-w-lg">
+                                    <div className="relative flex-1">
+                                        <i data-lucide="search" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                                        <input 
+                                            type="text" 
+                                            value={searchQuery}
+                                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                            placeholder="Search by Scaffold ID, Tag No, Location, Inspector..."
+                                            className="w-full pl-10 pr-4 py-2 border border-sky-200/80 rounded-xl text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition font-medium"
+                                        />
+                                        {searchQuery && (
+                                            <button 
+                                                onClick={() => setSearchQuery('')}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                            >
+                                                <i data-lucide="x" className="w-3.5 h-3.5"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => setShowScannerModal(true)}
+                                        className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl transition shadow-xs text-xs flex items-center gap-1.5 font-bold shrink-0"
+                                        title="Scan Physical Scafftag with Camera"
+                                    >
+                                        <i data-lucide="scan" className="w-4 h-4 text-purple-600"></i>
+                                        <span className="hidden sm:inline">Scan QR</span>
+                                    </button>
                                 </div>
 
                                 {/* Filter Dropdowns */}
@@ -874,11 +1030,21 @@
                                                                     <span className="hidden xl:inline">Pass</span>
                                                                 </button>
 
-                                                                {/* View on Map */}
+                                                                {/* Scafftag QR & Print */}
+                                                                <button
+                                                                    onClick={() => setQrModalScaffold(s)}
+                                                                    className="p-1.5 text-purple-700 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                                                                    title="View & Print Physical Scafftag with QR Code"
+                                                                >
+                                                                    <i data-lucide="qr-code" className="w-3.5 h-3.5 text-purple-600"></i>
+                                                                    <span className="hidden xl:inline">QR Tag</span>
+                                                                </button>
+
+                                                                {/* View on Map with Deep Link */}
                                                                 <a
-                                                                    href="mapping.html"
+                                                                    href={`mapping.html?id=${encodeURIComponent(s.id)}`}
                                                                     className="p-1.5 text-brand-700 hover:text-brand-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition font-bold text-[11px] flex items-center gap-1 shadow-2xs"
-                                                                    title="Locate on Greenfield Visual Map"
+                                                                    title="Locate & Focus on Greenfield Visual Map"
                                                                 >
                                                                     <i data-lucide="map-pin" className="w-3.5 h-3.5 text-brand-600"></i>
                                                                     <span className="hidden xl:inline">Map</span>
@@ -1404,6 +1570,142 @@
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Printable Scafftag & QR Modal */}
+                    {qrModalScaffold && (
+                        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                                {/* Scafftag Card (Target for @media print) */}
+                                <div id="printable-scafftag" className="p-6 bg-white text-slate-800 border-4 border-slate-900 m-3 rounded-2xl">
+                                    {/* Header Banner based on HSE status */}
+                                    <div className={`p-3 rounded-xl text-center text-white font-extrabold uppercase tracking-wider text-xs mb-4 shadow-xs ${
+                                        qrModalScaffold.status === 'ACTIVE' ? 'bg-emerald-600' :
+                                        qrModalScaffold.status === 'BUILDING' ? 'bg-amber-500' :
+                                        qrModalScaffold.status === 'EXPIRED' ? 'bg-rose-600' :
+                                        'bg-slate-700'
+                                    }`}>
+                                        {qrModalScaffold.status === 'ACTIVE' ? '✓ SCAFFOLD SAFE FOR USE (GREEN TAG)' :
+                                         qrModalScaffold.status === 'BUILDING' ? '⚠ CAUTION - UNDER ERECTION / MODIFICATION' :
+                                         qrModalScaffold.status === 'EXPIRED' ? '⛔ DANGER - DO NOT USE SCAFFOLD' :
+                                         'SCAFFOLD WORK STATUS: ' + qrModalScaffold.status}
+                                    </div>
+
+                                    <div className="flex items-center justify-between border-b pb-3 mb-3 border-slate-200">
+                                        <div>
+                                            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">ScaffTech Project Safety</div>
+                                            <div className="text-xl font-black text-slate-900 font-mono tracking-tight">{qrModalScaffold.id}</div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Physical Tag No</div>
+                                            <div className="text-sm font-bold text-brand-700 font-mono">{qrModalScaffold.tagNumber}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* QR Code Container */}
+                                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 my-3">
+                                        <img 
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrModalScaffold.id)}&color=0f172a&bgcolor=f8fafc`} 
+                                            alt={`QR Code for ${qrModalScaffold.id}`}
+                                            className="w-36 h-36 rounded-xl shadow-xs"
+                                        />
+                                        <div className="text-xs font-mono text-slate-700 mt-2 font-black tracking-wider">{qrModalScaffold.id}</div>
+                                        <div className="text-[10px] text-slate-400">Scan via ScaffTech to verify inspection</div>
+                                    </div>
+
+                                    {/* Details Grid */}
+                                    <div className="space-y-1.5 text-xs border-t pt-3 border-slate-200">
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Location:</span> <span className="font-bold text-slate-900">{qrModalScaffold.location}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Structure:</span> <span className="font-semibold text-slate-800">{qrModalScaffold.structureType || 'Tower'}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Height / Length:</span> <span className="font-mono text-slate-800">{qrModalScaffold.heightMeters || '-'} / {qrModalScaffold.lengthMeters || '-'}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Last Inspection:</span> <span className="font-bold text-slate-900 font-mono">{qrModalScaffold.lastInspection || '-'}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">HSE Inspector:</span> <span className="font-semibold text-slate-800">{qrModalScaffold.inspector || '-'}</span></div>
+                                    </div>
+                                </div>
+
+                                {/* Modal Footer (Screen-only actions) */}
+                                <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(qrModalScaffold.id);
+                                            showNotification(`Scaffold ID "${qrModalScaffold.id}" copied to clipboard!`, 'info');
+                                        }}
+                                        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <i data-lucide="copy" className="w-3.5 h-3.5"></i>
+                                        <span>Copy ID</span>
+                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setQrModalScaffold(null)}
+                                            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                                        >
+                                            Close
+                                        </button>
+                                        <button
+                                            onClick={() => window.print()}
+                                            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/25 transition flex items-center gap-1.5"
+                                        >
+                                            <i data-lucide="printer" className="w-4 h-4"></i>
+                                            <span>Print Scafftag</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Camera QR Scanner Modal */}
+                    {showScannerModal && (
+                        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                    <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                                        <i data-lucide="scan" className="w-4 h-4 text-brand-600"></i>
+                                        <span>Scan Physical Scafftag QR</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowScannerModal(false)}
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
+                                    >
+                                        <i data-lucide="x" className="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                <div className="p-4">
+                                    <div id="qr-camera-stream" className="w-full aspect-square bg-slate-900 rounded-2xl overflow-hidden relative flex items-center justify-center">
+                                        <div className="text-white text-xs text-center p-4">
+                                            <div className="animate-pulse mb-2 font-bold">Camera scanner active...</div>
+                                            <p className="text-[11px] text-slate-400">Point device camera at the physical Scafftag QR code</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 text-center">
+                                        <p className="text-[11px] text-slate-500 font-medium">Or type Scaffold ID directly:</p>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. SCF-26-0001"
+                                                id="manual-scan-input"
+                                                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && e.target.value.trim()) {
+                                                        handleQrCodeDetected(e.target.value.trim());
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const val = document.getElementById('manual-scan-input')?.value?.trim();
+                                                    if (val) handleQrCodeDetected(val);
+                                                }}
+                                                className="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 shadow-xs"
+                                            >
+                                                Lookup
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

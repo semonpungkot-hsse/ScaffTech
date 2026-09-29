@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScaffTech Pro - Enterprise GIS Scaffolding Visual Tracker & HSE Suite</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617'
+                        },
+                        amber: {
+                            500: '#f59e0b',
+                            600: '#d97706'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- HTML5 QR Scanner CDN -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0b1120;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .glow-card {
+            position: relative;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glow-card:hover {
+            border-color: rgba(245, 158, 11, 0.4);
+            box-shadow: 0 12px 30px -10px rgba(245, 158, 11, 0.15);
+            transform: translateY(-3px);
+        }
+        .pulse-beacon {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #f97316 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-black">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-black text-xl">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-lg tracking-tight text-white">ScaffTech</span>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">PRO ENTERPRISE</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 font-mono tracking-wide">GIS Spatial Plotting & HSE Scafftag Engine</p>
+                </div>
+            </div>
+
+            <!-- Cloud Database Connection Indicator -->
+            <div class="flex items-center space-x-4">
+                <div id="dbStatusPill" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700/60 text-xs">
+                    <span id="dbStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="dbStatusText" class="font-medium text-slate-300">Connecting to Cloud DB...</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a href="mapping.html" class="px-3.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition border border-slate-700 flex items-center space-x-1.5">
+                        <i data-lucide="map" class="w-4 h-4 text-amber-400"></i>
+                        <span>GIS Map</span>
+                    </a>
+                    <a href="database.html" class="px-3.5 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg transition shadow-md shadow-amber-500/20 flex items-center space-x-1.5">
+                        <i data-lucide="table" class="w-4 h-4"></i>
+                        <span>HSE Database</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex flex-col justify-center">
+
+        <!-- HERO SECTION -->
+        <div class="text-center max-w-3xl mx-auto mb-10">
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-slate-300 text-xs font-medium mb-4">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-beacon"></span>
+                <span>OSHA 1926.451 & BS EN 12811 Real-Time Compliance</span>
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">
+                Full-Stack Scaffolding <br class="hidden sm:inline" />
+                <span class="gradient-text">Operations & HSE Command Center</span>
+            </h1>
+            <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                Single-source platform for field erection tracking, unique Scafftag QR verification, 7-day automated inspection compliance, and high-precision GIS spatial layout mapping.
+            </p>
+        </div>
+
+        <!-- LIVE METRICS BAR (PULLED DYNAMICALLY FROM SUPABASE POSTGRES) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <div class="glow-card rounded-2xl p-5 border-l-4 border-l-emerald-500">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Safe Active Scaffolds</span>
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span id="metricActive" class="text-3xl font-bold font-mono text-white">--</span>
+                    <span class="text-xs font-medium text-emerald-400">Green Tag</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">Inspected & Safe for Work</p>
+            </div>
+
+            <div class="glow-card rounded-2xl p-5 border-l-4 border-l-amber-500">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Under Erection</span>
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                        <i data-lucide="wrench" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span id="metricBuilding" class="text-3xl font-bold font-mono text-white">--</span>
+                    <span class="text-xs font-medium text-amber-400">Yellow Tag</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">Modifications / In-Progress</p>
+            </div>
+
+            <div class="glow-card rounded-2xl p-5 border-l-4 border-l-rose-500">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inspection Due / Expired</span>
+                    <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span id="metricExpired" class="text-3xl font-bold font-mono text-rose-400">--</span>
+                    <span class="text-xs font-medium text-rose-400">Red Tag</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">&gt; 7 Days Since Last Check</p>
+            </div>
+
+            <div class="glow-card rounded-2xl p-5 border-l-4 border-l-sky-500">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Project Fleet</span>
+                    <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                        <i data-lucide="database" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span id="metricTotal" class="text-3xl font-bold font-mono text-white">--</span>
+                    <span class="text-xs font-medium text-sky-400">Units</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1" id="metricSubtext">Syncing with Supabase...</p>
+            </div>
+        </div>
+
+        <!-- QUICK UNIVERSAL LOOKUP & QR SCANNER BAR -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 mb-10 shadow-2xl backdrop-blur-xl">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="w-full md:w-auto">
+                    <h3 class="text-base font-semibold text-white flex items-center space-x-2">
+                        <i data-lucide="search" class="w-4 h-4 text-amber-400"></i>
+                        <span>Instant Field Scaffold / Scafftag Lookup</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Search by Scaffold ID (e.g. SCF-101, SCF-26-0001) or Tag Number</p>
+                </div>
+
+                <div class="flex-1 w-full flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <i data-lucide="hash" class="w-4 h-4 absolute left-3.5 top-3 text-slate-500"></i>
+                        <input id="quickSearchInput" type="text" placeholder="Enter ID (e.g. SCF-101) or scan QR..." class="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-mono">
+                    </div>
+                    <button id="btnOpenScanner" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 rounded-xl transition flex items-center space-x-1.5 text-xs font-medium">
+                        <i data-lucide="camera" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Camera</span>
+                    </button>
+                    <button id="btnRouteMap" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl transition text-xs font-semibold flex items-center space-x-1.5">
+                        <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400"></i>
+                        <span>On Map</span>
+                    </button>
+                    <button id="btnRouteDb" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl transition text-xs font-bold flex items-center space-x-1.5 shadow-md shadow-amber-500/20">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span>Audit Record</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Camera Stream Container (Hidden by default) -->
+            <div id="scannerSection" class="hidden mt-4 pt-4 border-t border-slate-800">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-medium text-amber-400 flex items-center space-x-1.5">
+                        <i data-lucide="scan-line" class="w-4 h-4 animate-spin"></i>
+                        <span>Live Scafftag QR Camera Scanner</span>
+                    </span>
+                    <button id="btnCloseScanner" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800">Cancel</button>
+                </div>
+                <div class="max-w-xs mx-auto overflow-hidden rounded-xl border border-amber-500/40 bg-black">
+                    <div id="cameraPreview" class="w-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- APPLICATION LAUNCHERS (TWO CORE WORKFLOW ENGINES) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- MODULE 1: GIS VISUAL MAPPING -->
+            <a href="mapping.html" class="glow-card rounded-2xl p-6 sm:p-8 flex flex-col justify-between group">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-110 transition duration-300">
+                            <i data-lucide="map" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>GIS SPATIAL ENGINE</span>
+                        </span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white mb-2 group-hover:text-amber-400 transition">
+                        Interactive GIS Plotting & Site Plan
+                    </h2>
+                    <p class="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+                        Plot single independent towers or multi-node linear pipe rack scaffolds directly on high-resolution site layouts. Features multi-level zoom & pan, coordinate autocalibration, and deep-link camera autofocus.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-300">
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Tower & Linear Modes</span>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Realtime Cloud Sync</span>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Layer Filtering</span>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                            <span>One-Click Inspection Pass</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-800/80">
+                        <span class="text-xs font-mono text-amber-400">Launch GIS Mapping &rarr;</span>
+                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 group-hover:bg-amber-500 group-hover:text-slate-950 transition">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- MODULE 2: DATABASE & HSE INSPECTION AUDIT -->
+            <a href="database.html" class="glow-card rounded-2xl p-6 sm:p-8 flex flex-col justify-between group">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center group-hover:scale-110 transition duration-300">
+                            <i data-lucide="table" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30 flex items-center space-x-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+                            <span>HSE AUDIT & TAGGING</span>
+                        </span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white mb-2 group-hover:text-sky-400 transition">
+                        HSE Inspection & Database Center
+                    </h2>
+                    <p class="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+                        Complete registry of all scaffolding assets. Includes automated 7-day inspection expiry calculation, anti-duplicate numbering system, printable QR Scafftag cards for physical holders, and Excel export.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-300">
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-sky-400"></i>
+                            <span>Printable QR Scafftags</span>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-sky-400"></i>
+                            <span>7-Day Expiry Engine</span>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-sky-400"></i>
+                            <span>Excel Spreadsheet Export</span>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-sky-400"></i>
+                            <span>Duplicate ID Prevention</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-800/80">
+                        <span class="text-xs font-mono text-sky-400">Launch HSE Database &rarr;</span>
+                        <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 group-hover:bg-sky-500 group-hover:text-slate-950 transition">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500 font-mono">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>
+                &copy; 2026 ScaffTech Enterprise - Industrial Scaffolding GIS & HSE Inspection System
+            </div>
+            <div class="flex items-center space-x-4 text-slate-400">
+                <span>Standard: OSHA 1926.451 / ADNOC HSE / BS EN 12811</span>
+                <span>•</span>
+                <span class="text-emerald-400 font-medium">Supabase Cloud Connected</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- LIVE DATA & CLIENT LOGIC -->
+    <script>
+        const SUPABASE_URL = 'https://zlstjvxirzxaghbcmbod.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_6ROp0xv_X1sMtNGGaLsrsg_bPfe_xtA';
+
+        let supabase = null;
+        let html5QrScanner = null;
+
+        // Initialize Supabase
+        if (window.supabase) {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            } catch (e) {
+                console.error('Supabase client error:', e);
+            }
+        }
+
+        // Fetch Live Stats from Supabase
+        async function fetchLiveMetrics() {
+            const dot = document.getElementById('dbStatusDot');
+            const text = document.getElementById('dbStatusText');
+
+            if (!supabase) {
+                if (text) text.textContent = 'Offline Mode (Local)';
+                if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+                loadLocalFallbackMetrics();
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.from('scaffolds').select('*');
+                if (error) throw error;
+
+                if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                if (text) text.textContent = 'Cloud Database Connected';
+
+                if (data && Array.isArray(data)) {
+                    updateMetricsUI(data);
+                } else {
+                    loadLocalFallbackMetrics();
+                }
+            } catch (err) {
+                console.warn('Could not fetch cloud metrics:', err);
+                if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
+                if (text) text.textContent = 'Cloud Sync Warning (Using Local)';
+                loadLocalFallbackMetrics();
+            }
+        }
+
+        function calculateHseExpired(lastInspectionDate) {
+            if (!lastInspectionDate) return true;
+            try {
+                const insp = new Date(lastInspectionDate);
+                const now = new Date();
+                const diffTime = Math.abs(now - insp);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays > 7;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function updateMetricsUI(records) {
+            let activeCount = 0;
+            let buildingCount = 0;
+            let expiredCount = 0;
+
+            records.forEach(r => {
+                const status = (r.status || '').toUpperCase();
+                const lastInsp = r.last_inspection || r.lastInspection;
+                const isOverdue = calculateHseExpired(lastInsp);
+
+                if (status === 'EXPIRED' || (status === 'ACTIVE' && isOverdue)) {
+                    expiredCount++;
+                } else if (status === 'ACTIVE') {
+                    activeCount++;
+                } else if (status === 'BUILDING' || status === 'REQUESTED') {
+                    buildingCount++;
+                }
+            });
+
+            document.getElementById('metricActive').textContent = activeCount;
+            document.getElementById('metricBuilding').textContent = buildingCount;
+            document.getElementById('metricExpired').textContent = expiredCount;
+            document.getElementById('metricTotal').textContent = records.length;
+            document.getElementById('metricSubtext').textContent = `Live Synced (${records.length} assets recorded)`;
+        }
+
+        function loadLocalFallbackMetrics() {
+            try {
+                const local = localStorage.getItem('svt_scaffolds_v5_clean');
+                if (local) {
+                    const parsed = JSON.parse(local);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        updateMetricsUI(parsed);
+                        return;
+                    }
+                }
+            } catch (e) {}
+
+            // Defaults if empty
+            document.getElementById('metricActive').textContent = '4';
+            document.getElementById('metricBuilding').textContent = '0';
+            document.getElementById('metricExpired').textContent = '0';
+            document.getElementById('metricTotal').textContent = '4';
+            document.getElementById('metricSubtext').textContent = 'Standard Baseline';
+        }
+
+        // Quick Search Routing
+        function handleRoute(destination) {
+            const input = document.getElementById('quickSearchInput');
+            const query = (input?.value || '').trim();
+            if (destination === 'map') {
+                window.location.href = query ? `mapping.html?id=${encodeURIComponent(query)}` : 'mapping.html';
+            } else {
+                window.location.href = query ? `database.html?search=${encodeURIComponent(query)}` : 'database.html';
+            }
+        }
+
+        document.getElementById('btnRouteMap')?.addEventListener('click', () => handleRoute('map'));
+        document.getElementById('btnRouteDb')?.addEventListener('click', () => handleRoute('db'));
+        document.getElementById('quickSearchInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleRoute('db');
+        });
+
+        // QR Scanner Logic
+        const scannerSection = document.getElementById('scannerSection');
+        const btnOpenScanner = document.getElementById('btnOpenScanner');
+        const btnCloseScanner = document.getElementById('btnCloseScanner');
+
+        btnOpenScanner?.addEventListener('click', () => {
+            scannerSection.classList.remove('hidden');
+            if (window.Html5Qrcode) {
+                html5QrScanner = new Html5Qrcode("cameraPreview");
+                html5QrScanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 200, height: 200 } },
+                    (decodedText) => {
+                        html5QrScanner.stop().then(() => {
+                            scannerSection.classList.add('hidden');
+                            document.getElementById('quickSearchInput').value = decodedText;
+                            handleRoute('db');
+                        }).catch(() => {
+                            document.getElementById('quickSearchInput').value = decodedText;
+                            handleRoute('db');
+                        });
+                    },
+                    () => {}
+                ).catch(err => {
+                    console.warn("Camera scan error:", err);
+                    alert("Camera error or permission denied. Please enter tag ID manually.");
+                    scannerSection.classList.add('hidden');
+                });
+            }
+        });
+
+        btnCloseScanner?.addEventListener('click', () => {
+            if (html5QrScanner) {
+                html5QrScanner.stop().catch(() => {});
+            }
+            scannerSection.classList.add('hidden');
+        });
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+            fetchLiveMetrics();
+        });
+    </script>
+</body>
+</html>

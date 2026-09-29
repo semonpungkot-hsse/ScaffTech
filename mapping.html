@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap"
+        rel="stylesheet">
     <!-- Tailwind CSS CDN with Custom Brand Tokens -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -46,71 +49,142 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Supabase JS Client v2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- QR Code & Scanner Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         @keyframes pulse-ring {
-            0% { transform: scale(0.95); opacity: 0.9; }
-            50% { transform: scale(1.6); opacity: 0.3; }
-            100% { transform: scale(2.3); opacity: 0; }
+            0% {
+                transform: scale(0.95);
+                opacity: 0.9;
+            }
+
+            50% {
+                transform: scale(1.6);
+                opacity: 0.3;
+            }
+
+            100% {
+                transform: scale(2.3);
+                opacity: 0;
+            }
         }
+
         .beacon-ring {
             animation: pulse-ring 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
         }
+
         @keyframes urgent-pulse {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.7)); }
-            50% { transform: scale(1.15); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 1)); }
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.7));
+            }
+
+            50% {
+                transform: scale(1.15);
+                filter: drop-shadow(0 0 12px rgba(245, 158, 11, 1));
+            }
         }
+
         .animate-urgent {
             animation: urgent-pulse 1.4s infinite ease-in-out;
         }
+
         @keyframes expired-pulse {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(225, 29, 72, 0.8)); }
-            50% { transform: scale(1.18); filter: drop-shadow(0 0 16px rgba(225, 29, 72, 1)); }
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 6px rgba(225, 29, 72, 0.8));
+            }
+
+            50% {
+                transform: scale(1.18);
+                filter: drop-shadow(0 0 16px rgba(225, 29, 72, 1));
+            }
         }
+
         .animate-expired {
             animation: expired-pulse 1.2s infinite ease-in-out;
         }
+
         @keyframes dash-flow {
-            to { stroke-dashoffset: -32; }
+            to {
+                stroke-dashoffset: -32;
+            }
         }
+
         .path-animated {
             stroke-dasharray: 8 6;
             animation: dash-flow 1.5s linear infinite;
         }
+
         .canvas-area {
             cursor: grab;
             user-select: none;
             background-color: #f8fafc;
         }
+
         .canvas-area.has-grid {
-            background-image: 
+            background-image:
                 radial-gradient(#bae6fd 1.2px, transparent 1.2px),
                 linear-gradient(to right, rgba(224, 242, 254, 0.35) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(224, 242, 254, 0.35) 1px, transparent 1px);
             background-size: 24px 24px, 120px 120px, 120px 120px;
         }
+
         .canvas-area:active {
             cursor: grabbing;
         }
+
         .canvas-area.draw-mode {
             cursor: crosshair;
         }
+
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
         }
+
         ::-webkit-scrollbar-track {
             background: #f1f5f9;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #93c5fd;
             border-radius: 9999px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #60a5fa;
         }
+
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
+            #printable-scafftag, #printable-scafftag * {
+                visibility: visible !important;
+            }
+            #printable-scafftag {
+                position: fixed !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 90mm !important;
+                box-shadow: none !important;
+                border: 3px solid #0f172a !important;
+                margin: 0 !important;
+                z-index: 99999 !important;
+            }
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased font-sans min-h-screen selection:bg-brand-100 selection:text-brand-900">
+
+<body
+    class="bg-slate-50 text-slate-800 antialiased font-sans min-h-screen selection:bg-brand-100 selection:text-brand-900">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -121,68 +195,68 @@
 
         // HSE Status Configurations with light aesthetic colors
         const STATUS_CONFIG = {
-            ALL: { 
-                id: 'ALL', 
-                label: 'All Statuses', 
-                icon: 'layers', 
-                color: 'bg-white text-slate-700 border-slate-200 hover:border-brand-300', 
-                activeColor: 'bg-brand-600 text-white border-brand-600 shadow-sm shadow-brand-500/20' 
+            ALL: {
+                id: 'ALL',
+                label: 'All Statuses',
+                icon: 'layers',
+                color: 'bg-white text-slate-700 border-slate-200 hover:border-brand-300',
+                activeColor: 'bg-brand-600 text-white border-brand-600 shadow-sm shadow-brand-500/20'
             },
-            ACTIVE: { 
-                id: 'ACTIVE', 
-                label: 'Active (Green Tag)', 
-                icon: 'check-circle-2', 
-                color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100', 
+            ACTIVE: {
+                id: 'ACTIVE',
+                label: 'Active (Green Tag)',
+                icon: 'check-circle-2',
+                color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
                 activeColor: 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-500/20',
                 badgeBg: 'bg-emerald-500',
                 strokeColor: '#10b981',
                 tagClass: 'bg-emerald-100 text-emerald-800 border-emerald-300'
             },
-            BUILDING: { 
-                id: 'BUILDING', 
-                label: 'Building (Erection)', 
-                icon: 'hammer', 
-                color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100', 
+            BUILDING: {
+                id: 'BUILDING',
+                label: 'Building (Erection)',
+                icon: 'hammer',
+                color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
                 activeColor: 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-500/20',
                 badgeBg: 'bg-amber-500',
                 strokeColor: '#f59e0b',
                 tagClass: 'bg-amber-100 text-amber-800 border-amber-300'
             },
-            REQUESTED: { 
-                id: 'REQUESTED', 
-                label: 'Requested', 
-                icon: 'file-question', 
-                color: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100', 
+            REQUESTED: {
+                id: 'REQUESTED',
+                label: 'Requested',
+                icon: 'file-question',
+                color: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
                 activeColor: 'bg-sky-600 text-white border-sky-600 shadow-sm shadow-sky-500/20',
                 badgeBg: 'bg-sky-500',
                 strokeColor: '#0ea5e9',
                 tagClass: 'bg-sky-100 text-sky-800 border-sky-300'
             },
-            ON_HOLD: { 
-                id: 'ON_HOLD', 
-                label: 'On Hold (Yellow Tag)', 
-                icon: 'alert-triangle', 
-                color: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100', 
+            ON_HOLD: {
+                id: 'ON_HOLD',
+                label: 'On Hold (Yellow Tag)',
+                icon: 'alert-triangle',
+                color: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100',
                 activeColor: 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-500/20',
                 badgeBg: 'bg-amber-500',
                 strokeColor: '#f59e0b',
                 tagClass: 'bg-amber-100 text-amber-900 border-amber-300'
             },
-            EXPIRED: { 
-                id: 'EXPIRED', 
-                label: 'Expired (>7 Days)', 
-                icon: 'alert-octagon', 
-                color: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100', 
+            EXPIRED: {
+                id: 'EXPIRED',
+                label: 'Expired (>7 Days)',
+                icon: 'alert-octagon',
+                color: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
                 activeColor: 'bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-500/20',
                 badgeBg: 'bg-rose-600',
                 strokeColor: '#e11d48',
                 tagClass: 'bg-rose-100 text-rose-800 border-rose-300'
             },
-            DISMANTLED: { 
-                id: 'DISMANTLED', 
-                label: 'Dismantled', 
-                icon: 'archive', 
-                color: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200', 
+            DISMANTLED: {
+                id: 'DISMANTLED',
+                label: 'Dismantled',
+                icon: 'archive',
+                color: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200',
                 activeColor: 'bg-slate-700 text-white border-slate-700 shadow-sm shadow-slate-500/20',
                 badgeBg: 'bg-slate-500',
                 strokeColor: '#64748b',
@@ -415,6 +489,33 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
             lengthMeters: row.length_meters || row.lengthMeters || ''
         });
 
+        // Guaranteed Unique Scaffold ID Generator (Anti-Duplicate)
+        const generateUniqueScaffoldId = (type = 'POINT', currentList = []) => {
+            const prefix = type === 'LINEAR' ? 'SCF-LIN-26-' : 'SCF-26-';
+            let maxNum = 0;
+            (currentList || []).forEach(s => {
+                if (!s || !s.id) return;
+                const idStr = String(s.id).toUpperCase();
+                if (idStr.startsWith(prefix)) {
+                    const numPart = parseInt(idStr.replace(prefix, ''), 10);
+                    if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+                } else if (type === 'POINT' && idStr.startsWith('SCF-') && !idStr.startsWith('SCF-LIN-')) {
+                    const rawNum = parseInt(idStr.replace('SCF-', ''), 10);
+                    if (!isNaN(rawNum) && rawNum > maxNum) maxNum = rawNum;
+                } else if (type === 'LINEAR' && idStr.startsWith('SCF-LIN-')) {
+                    const rawNum = parseInt(idStr.replace('SCF-LIN-', ''), 10);
+                    if (!isNaN(rawNum) && rawNum > maxNum) maxNum = rawNum;
+                }
+            });
+            const nextNum = maxNum + 1;
+            let candidate = `${prefix}${String(nextNum).padStart(4, '0')}`;
+            let counter = 0;
+            while ((currentList || []).some(s => s && s.id && s.id.toUpperCase() === candidate.toUpperCase()) && counter < 2000) {
+                candidate = `${prefix}${String(nextNum + (++counter)).padStart(4, '0')}`;
+            }
+            return candidate;
+        };
+
         function App() {
 
             // =========================================================================
@@ -466,7 +567,7 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
             const [activeFilter, setActiveFilter] = useState('ALL');
             const [searchQuery, setSearchQuery] = useState('');
             const [selectedScaffold, setSelectedScaffold] = useState(null);
-            
+
             // Drawing Modes: null, 'POINT', or 'LINEAR'
             const [drawingMode, setDrawingMode] = useState(null);
             const [tempPathPoints, setTempPathPoints] = useState([]);
@@ -478,6 +579,10 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
             const [showDataModal, setShowDataModal] = useState(false);
             const [dataModalTab, setDataModalTab] = useState('EXCEL');
             const [customJsonText, setCustomJsonText] = useState('');
+
+            // QR Scafftag & Camera Scanner Modal States
+            const [qrModalScaffold, setQrModalScaffold] = useState(null);
+            const [showScannerModal, setShowScannerModal] = useState(false);
 
             // Sidebar and Notifications
             const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -545,7 +650,7 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
                 return scaffolds.filter(s => {
                     const matchesFilter = activeFilter === 'ALL' ? true : s.status === activeFilter;
                     const q = searchQuery.toLowerCase().trim();
-                    const matchesSearch = !q || 
+                    const matchesSearch = !q ||
                         s.id.toLowerCase().includes(q) ||
                         s.tagNumber.toLowerCase().includes(q) ||
                         s.location.toLowerCase().includes(q) ||
@@ -575,6 +680,75 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
                 }
             }, []);
 
+            // Check URL search parameters on mount for deep linking from Database
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const q = params.get('search') || params.get('id') || params.get('scaffoldId');
+                if (q) {
+                    setSearchQuery(q);
+                    const found = scaffolds.find(s => s.id.toLowerCase() === q.toLowerCase());
+                    if (found) {
+                        setSelectedScaffold(found);
+                        setTimeout(() => handleFocusScaffold(found), 600);
+                    }
+                }
+            }, [scaffolds]);
+
+            // Camera QR Scanner lifecycle handler
+            const handleQrCodeDetected = (scannedText) => {
+                setShowScannerModal(false);
+                let targetId = (scannedText || '').trim();
+                if (targetId.includes('=')) {
+                    const parts = targetId.split('=');
+                    targetId = parts[parts.length - 1];
+                }
+                setSearchQuery(targetId);
+                const matched = scaffolds.find(s => 
+                    s.id.toLowerCase() === targetId.toLowerCase() || 
+                    s.tagNumber.toLowerCase() === targetId.toLowerCase()
+                );
+                if (matched) {
+                    handleFocusScaffold(matched);
+                    showNotification(`Scafftag Verified! Focused on ${matched.id}`, 'success');
+                } else {
+                    showNotification(`Scanned tag "${targetId}" not found in current project!`, 'warning');
+                }
+            };
+
+            useEffect(() => {
+                let html5QrCode = null;
+                if (showScannerModal && window.Html5Qrcode) {
+                    const timeout = setTimeout(() => {
+                        try {
+                            html5QrCode = new window.Html5Qrcode("qr-camera-stream-map");
+                            html5QrCode.start(
+                                { facingMode: "environment" },
+                                { fps: 10, qrbox: { width: 220, height: 220 } },
+                                (decodedText) => {
+                                    html5QrCode.stop().then(() => {
+                                        handleQrCodeDetected(decodedText);
+                                    }).catch(() => {
+                                        handleQrCodeDetected(decodedText);
+                                    });
+                                },
+                                () => {}
+                            ).catch(err => {
+                                console.warn("Camera start error (check permissions):", err);
+                            });
+                        } catch (err) {
+                            console.warn("Scanner init exception:", err);
+                        }
+                    }, 300);
+
+                    return () => {
+                        clearTimeout(timeout);
+                        if (html5QrCode && html5QrCode.isScanning) {
+                            html5QrCode.stop().catch(() => {});
+                        }
+                    };
+                }
+            }, [showScannerModal]);
+
             // LocalStorage sync & Lucide icons instantiation
             useEffect(() => {
                 localStorage.setItem('svt_scaffolds_v5_clean', JSON.stringify(scaffolds));
@@ -583,7 +757,7 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
                 if (window.lucide) {
                     window.lucide.createIcons();
                 }
-            }, [scaffolds, displaySettings, activeFilter, selectedScaffold, isSidebarOpen, drawingMode, tempPathPoints, showLayerMenu, showSupabaseModal, supabaseStatus, autoCloudSync]);
+            }, [scaffolds, displaySettings, activeFilter, selectedScaffold, isSidebarOpen, drawingMode, tempPathPoints, showLayerMenu, showSupabaseModal, supabaseStatus, autoCloudSync, qrModalScaffold, showScannerModal]);
 
             // Test and check Supabase connection
             const checkSupabaseConnection = async (client = supabaseClient, showSuccessToast = false) => {
@@ -695,11 +869,17 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
 
             // Single item background upsert
             const syncUpsertScaffold = async (item) => {
-                if (!supabaseClient || !autoCloudSync || supabaseStatus !== 'CONNECTED') return;
+                if (!supabaseClient || !autoCloudSync) return;
                 try {
                     const rec = toDbRecord(item);
                     const { error } = await supabaseClient.from('scaffolds').upsert(rec, { onConflict: 'id' });
-                    if (error) console.error('Cloud auto-upsert error:', error);
+                    if (error) {
+                        console.error('Cloud auto-upsert error:', error);
+                        showNotification(`Cloud sync error: ${error.message}`, 'warning');
+                    } else {
+                        setSupabaseStatus('CONNECTED');
+                        setSupabaseStatusMsg('Connected & Synced');
+                    }
                 } catch (e) {
                     console.error('Cloud auto-upsert exception:', e);
                 }
@@ -707,10 +887,13 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
 
             // Single item background delete
             const syncDeleteScaffold = async (id) => {
-                if (!supabaseClient || !autoCloudSync || supabaseStatus !== 'CONNECTED') return;
+                if (!supabaseClient || !autoCloudSync) return;
                 try {
                     const { error } = await supabaseClient.from('scaffolds').delete().eq('id', id);
-                    if (error) console.error('Cloud auto-delete error:', error);
+                    if (error) {
+                        console.error('Cloud auto-delete error:', error);
+                        showNotification(`Cloud delete error: ${error.message}`, 'warning');
+                    }
                 } catch (e) {
                     console.error('Cloud auto-delete exception:', e);
                 }
@@ -718,11 +901,16 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
 
             // Batch upsert to Cloud
             const syncBatchUpsertScaffolds = async (items) => {
-                if (!supabaseClient || !autoCloudSync || supabaseStatus !== 'CONNECTED') return;
+                if (!supabaseClient || !autoCloudSync) return;
                 try {
                     const recs = items.map(toDbRecord);
                     const { error } = await supabaseClient.from('scaffolds').upsert(recs, { onConflict: 'id' });
-                    if (error) console.error('Cloud batch upsert error:', error);
+                    if (error) {
+                        console.error('Cloud batch upsert error:', error);
+                        showNotification(`Cloud batch sync error: ${error.message}`, 'warning');
+                    } else {
+                        setSupabaseStatus('CONNECTED');
+                    }
                 } catch (e) {
                     console.error('Cloud batch upsert exception:', e);
                 }
@@ -965,10 +1153,11 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
                 const percentY = parseFloat(((clickY / rect.height) * 100).toFixed(2));
 
                 if (drawingMode === 'POINT') {
-                    const newId = `SCF-${Math.floor(100 + Math.random() * 900)}`;
+                    const newId = generateUniqueScaffoldId('POINT', scaffolds);
+                    const numPart = newId.replace('SCF-26-', '').replace('SCF-', '');
                     const newScaffold = {
                         id: newId,
-                        tagNumber: `TAG-${Math.floor(100 + Math.random() * 900)}`,
+                        tagNumber: `TAG-GRN-${numPart}`,
                         location: 'Field Site Plan Area',
                         type: 'POINT',
                         status: 'BUILDING',
@@ -1005,18 +1194,19 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
                     return;
                 }
 
-                const newId = `SCF-LIN-${Math.floor(100 + Math.random() * 900)}`;
+                const newId = generateUniqueScaffoldId('LINEAR', scaffolds);
+                const numPart = newId.replace('SCF-LIN-26-', '').replace('SCF-LIN-', '');
                 let approxLength = 0;
                 for (let i = 0; i < tempPathPoints.length - 1; i++) {
-                    const dx = tempPathPoints[i+1].x - tempPathPoints[i].x;
-                    const dy = tempPathPoints[i+1].y - tempPathPoints[i].y;
+                    const dx = tempPathPoints[i + 1].x - tempPathPoints[i].x;
+                    const dy = tempPathPoints[i + 1].y - tempPathPoints[i].y;
                     approxLength += Math.sqrt(dx * dx + dy * dy);
                 }
                 const estimatedMeters = Math.max(Math.round(approxLength * 2.5), 10);
 
                 const newLinearScaffold = {
                     id: newId,
-                    tagNumber: `TAG-SPAN-${Math.floor(100 + Math.random() * 900)}`,
+                    tagNumber: `TAG-SPAN-${numPart}`,
                     location: 'Pipeline Rack / Multi-Point Span',
                     type: 'LINEAR',
                     status: 'BUILDING',
@@ -1234,8 +1424,158 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
                     showNotification('JSON parse error: ' + e.message, 'danger');
                 }
             };
-return (
-<div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans">
+
+            // Handle Save Scaffold Modal (Fixes "tombol safe scaffold tidak bisa disimpan")
+            const handleSaveScaffoldForm = (formData) => {
+                let data = { ...formData };
+                // Ensure coordinates exist for accurate mapping
+                if (data.type === 'POINT' && (data.x === undefined || data.y === undefined || isNaN(data.x) || isNaN(data.y))) {
+                    const matchedLoc = MAP_RED_LOCATIONS.find(l => data.location && data.location.includes(l.name));
+                    if (matchedLoc) {
+                        data.x = matchedLoc.x;
+                        data.y = matchedLoc.y;
+                    } else {
+                        data.x = 21.2;
+                        data.y = 12.5;
+                    }
+                } else if (data.type === 'LINEAR' && (!data.points || data.points.length < 2)) {
+                    const parts = (data.location || '').split('->').map(s => s.trim());
+                    const p1 = MAP_RED_LOCATIONS.find(l => parts[0] && parts[0].includes(l.name)) || { x: 34.2, y: 42.3 };
+                    const p2 = MAP_RED_LOCATIONS.find(l => parts[1] && parts[1].includes(l.name)) || { x: 44.5, y: 42.1 };
+                    data.points = [{ x: p1.x, y: p1.y }, { x: p2.x, y: p2.y }];
+                }
+
+                // Anti-Duplicate ID Check
+                if (modalMode === 'NEW') {
+                    const duplicate = scaffolds.find(s => s.id.toLowerCase() === (data.id || '').toLowerCase());
+                    if (duplicate) {
+                        showNotification(`Scaffold ID "${data.id}" already exists! Please use a unique number.`, 'danger');
+                        return;
+                    }
+                } else if (modalMode === 'EDIT' && editingScaffold) {
+                    const duplicate = scaffolds.find(s => s.id.toLowerCase() === (data.id || '').toLowerCase() && s.id !== editingScaffold.id);
+                    if (duplicate) {
+                        showNotification(`Cannot save: Scaffold ID "${data.id}" is already used by another unit!`, 'danger');
+                        return;
+                    }
+                }
+
+                let updatedList;
+                if (modalMode === 'NEW') {
+                    updatedList = [data, ...scaffolds];
+                    showNotification(`Scaffold ${data.id} registered and saved successfully!`, 'success');
+                } else {
+                    updatedList = scaffolds.map(s => s.id === (editingScaffold ? editingScaffold.id : data.id) ? data : s);
+                    showNotification(`Scaffold ${data.id} updated and saved successfully!`, 'success');
+                }
+                setScaffolds(updatedList);
+                setSelectedScaffold(data);
+                setShowModal(false);
+                setEditingScaffold(null);
+
+                // Cloud sync
+                syncUpsertScaffold(data);
+            };
+
+            // Handle Delete Scaffold Record
+            const handleDeleteScaffold = (id) => {
+                if (!window.confirm(`Are you sure you want to delete scaffold ${id}? This action cannot be undone.`)) return;
+                setScaffolds(prev => prev.filter(s => s.id !== id));
+                if (selectedScaffold?.id === id) setSelectedScaffold(null);
+                syncDeleteScaffold(id);
+                showNotification(`Scaffold ${id} successfully deleted from local & cloud.`, 'info');
+            };
+
+            // Handle Excel Import (.xlsx, .xls)
+            const handleImportExcelFile = (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const bstr = evt.target.result;
+                        const wb = XLSX.read(bstr, { type: 'binary' });
+                        const wsname = wb.SheetNames[0];
+                        const ws = wb.Sheets[wsname];
+                        const rows = XLSX.utils.sheet_to_json(ws);
+                        if (!rows || rows.length === 0) {
+                            showNotification('The uploaded Excel sheet contains no records!', 'warning');
+                            return;
+                        }
+                        const imported = rows.map((r, idx) => ({
+                            id: String(r['Scaffold ID'] || r['id'] || generateUniqueScaffoldId(r['Type'] || 'POINT', scaffolds)),
+                            tagNumber: String(r['Tag Number'] || r['tag_number'] || `TAG-${idx + 1}`),
+                            location: String(r['Location'] || r['location'] || 'SUB 524'),
+                            type: String(r['Type'] || r['type'] || 'POINT').toUpperCase() === 'LINEAR' ? 'LINEAR' : 'POINT',
+                            status: String(r['HSE Status'] || r['status'] || 'ACTIVE').toUpperCase(),
+                            x: r['Coordinate X (%)'] !== undefined ? parseFloat(r['Coordinate X (%)']) : 21.2,
+                            y: r['Coordinate Y (%)'] !== undefined ? parseFloat(r['Coordinate Y (%)']) : 12.5,
+                            points: r['Path Points (JSON)'] ? (typeof r['Path Points (JSON)'] === 'string' ? JSON.parse(r['Path Points (JSON)']) : r['Path Points (JSON)']) : null,
+                            installDate: formatExcelDate(r['Install Date'] || r['install_date']),
+                            lastInspection: formatExcelDate(r['Last Inspection'] || r['last_inspection']),
+                            targetDismantleDate: formatExcelDate(r['Target Dismantle'] || r['target_dismantle_date']),
+                            actualDismantleDate: formatExcelDate(r['Actual Dismantle'] || r['actual_dismantle_date']),
+                            inspector: String(r['HSE Inspector'] || r['inspector'] || ''),
+                            notes: String(r['Notes & Remarks'] || r['notes'] || ''),
+                            structureType: String(r['Structure Type'] || r['structure_type'] || 'Independent Tower'),
+                            heightMeters: String(r['Height'] || r['height_meters'] || '6m'),
+                            lengthMeters: String(r['Length'] || r['length_meters'] || '-')
+                        }));
+                        setScaffolds(imported);
+                        setSelectedScaffold(imported[0] || null);
+                        syncBatchUpsertScaffolds(imported);
+                        setShowDataModal(false);
+                        showNotification(`Successfully imported ${imported.length} scaffolds from Excel!`, 'success');
+                    } catch (err) {
+                        showNotification('Failed to parse Excel file: ' + err.message, 'danger');
+                    }
+                };
+                reader.readAsBinaryString(file);
+            };
+
+            // Handle JSON File Import
+            const handleImportFile = (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    handleImportFromText(evt.target.result);
+                    setShowDataModal(false);
+                };
+                reader.readAsText(file);
+            };
+
+            // Smooth Pan & Zoom Camera to Specific Scaffold
+            const handleFocusScaffold = (item) => {
+                if (!item) return;
+                setSelectedScaffold(item);
+                let targetX = 50;
+                let targetY = 50;
+                if (item.type === 'POINT' && item.x !== null && item.x !== undefined) {
+                    targetX = item.x;
+                    targetY = item.y;
+                } else if (item.type === 'LINEAR' && Array.isArray(item.points) && item.points.length > 0) {
+                    targetX = item.points[0].x;
+                    targetY = item.points[0].y;
+                }
+
+                const targetZoom = 2.4;
+                setZoom(targetZoom);
+                if (imageRef.current) {
+                    const imgW = imageRef.current.offsetWidth || 1000;
+                    const imgH = imageRef.current.offsetHeight || 650;
+                    const px = (targetX / 100) * imgW;
+                    const py = (targetY / 100) * imgH;
+                    setPan({
+                        x: (imgW / 2 - px) * targetZoom,
+                        y: (imgH / 2 - py) * targetZoom
+                    });
+                }
+                showNotification(`Targeted Scaffold ${item.id} at ${item.location}`, 'info');
+            };
+
+            return (
+                <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans">
                     {/* ========================================================================= */}
                     {/* 1. ULTRA-CLEAN VERTICAL NAVIGATION RAIL (LEFT DOCK)                       */}
                     {/* ========================================================================= */}
@@ -1243,7 +1583,7 @@ return (
                         {/* Top: Brand & Primary Navigation */}
                         <div className="flex flex-col items-center gap-2.5 w-full">
                             {/* Brand Icon */}
-                            <div 
+                            <div
                                 className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-sky-400 flex items-center justify-center text-white shadow-md shadow-brand-500/25 mb-1 cursor-pointer"
                                 title="ScaffTech Enterprise • Visual GIS Tracking"
                             >
@@ -1264,11 +1604,10 @@ return (
                             {/* Pointer / Pan Mode */}
                             <button
                                 onClick={() => cancelDrawing()}
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
-                                    !drawingMode
-                                    ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/30'
-                                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-                                }`}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${!drawingMode
+                                        ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/30'
+                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                                    }`}
                                 title="Pan & Inspect Canvas Mode"
                             >
                                 <i data-lucide="mouse-pointer" className="w-5 h-5"></i>
@@ -1284,11 +1623,10 @@ return (
                                         showNotification('Point Pin Mode active. Click on canvas to place a scaffold tower.', 'info');
                                     }
                                 }}
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition relative ${
-                                    drawingMode === 'POINT'
-                                    ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-300 animate-pulse'
-                                    : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
-                                }`}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition relative ${drawingMode === 'POINT'
+                                        ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-300 animate-pulse'
+                                        : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
+                                    }`}
                                 title="Plot Single Point Scaffold (Tower)"
                             >
                                 <i data-lucide={drawingMode === 'POINT' ? 'x' : 'map-pin-plus'} className="w-5 h-5"></i>
@@ -1304,9 +1642,8 @@ return (
                                         showNotification('Linear Route Mode active. Click points on map sequentially.', 'info');
                                     }
                                 }}
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition relative ${
-                                    drawingMode === 'LINEAR' ? 'bg-sky-600 text-white shadow-sm ring-2 ring-sky-300 animate-pulse' : 'text-slate-500 hover:text-sky-600 hover:bg-sky-50'
-                                }`}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition relative ${drawingMode === 'LINEAR' ? 'bg-sky-600 text-white shadow-sm ring-2 ring-sky-300 animate-pulse' : 'text-slate-500 hover:text-sky-600 hover:bg-sky-50'
+                                    }`}
                                 title="Draw Multi-Point Linear Route (Pipe Rack / Catwalk)"
                             >
                                 <i data-lucide={drawingMode === 'LINEAR' ? 'x' : 'git-commit'} className="w-5 h-5"></i>
@@ -1318,11 +1655,10 @@ return (
                             <div className="relative">
                                 <button
                                     onClick={() => setShowLayerMenu(!showLayerMenu)}
-                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition relative ${
-                                        showLayerMenu
-                                        ? 'bg-brand-600 text-white shadow-sm'
-                                        : 'text-slate-500 hover:text-brand-600 hover:bg-sky-50'
-                                    }`}
+                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition relative ${showLayerMenu
+                                            ? 'bg-brand-600 text-white shadow-sm'
+                                            : 'text-slate-500 hover:text-brand-600 hover:bg-sky-50'
+                                        }`}
                                     title="Layer Visibility & Presets"
                                 >
                                     <i data-lucide="sliders-horizontal" className="w-5 h-5"></i>
@@ -1342,7 +1678,7 @@ return (
                                                 </h3>
                                                 <p className="text-[10px] text-slate-400">Toggle map elements and annotations</p>
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={() => setShowLayerMenu(false)}
                                                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
                                             >
@@ -1386,10 +1722,10 @@ return (
                                                     <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
                                                     <span>Red Landmark Labels</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showLandmarks} 
-                                                    onChange={() => toggleSetting('showLandmarks')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showLandmarks}
+                                                    onChange={() => toggleSetting('showLandmarks')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1399,10 +1735,10 @@ return (
                                                     <i data-lucide="grid" className="w-3.5 h-3.5 text-sky-400"></i>
                                                     <span>Canvas Grid</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showCanvasGrid} 
-                                                    onChange={() => toggleSetting('showCanvasGrid')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showCanvasGrid}
+                                                    onChange={() => toggleSetting('showCanvasGrid')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1416,10 +1752,10 @@ return (
                                                     <i data-lucide="map-pin" className="w-3.5 h-3.5 text-emerald-500"></i>
                                                     <span>Point Scaffold Pins</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showPointScaffolds} 
-                                                    onChange={() => toggleSetting('showPointScaffolds')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showPointScaffolds}
+                                                    onChange={() => toggleSetting('showPointScaffolds')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1429,10 +1765,10 @@ return (
                                                     <i data-lucide="git-commit" className="w-3.5 h-3.5 text-sky-500"></i>
                                                     <span>Linear Spans (Pipe Racks)</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showLinearScaffolds} 
-                                                    onChange={() => toggleSetting('showLinearScaffolds')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showLinearScaffolds}
+                                                    onChange={() => toggleSetting('showLinearScaffolds')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1442,10 +1778,10 @@ return (
                                                     <i data-lucide="type" className="w-3.5 h-3.5 text-brand-500"></i>
                                                     <span>ID & Tag Labels</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showPinLabels} 
-                                                    onChange={() => toggleSetting('showPinLabels')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showPinLabels}
+                                                    onChange={() => toggleSetting('showPinLabels')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1459,10 +1795,10 @@ return (
                                                     <i data-lucide="zap" className="w-3.5 h-3.5 text-amber-500"></i>
                                                     <span>HSE Alarm Pulse</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showAlertPulse} 
-                                                    onChange={() => toggleSetting('showAlertPulse')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showAlertPulse}
+                                                    onChange={() => toggleSetting('showAlertPulse')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1472,10 +1808,10 @@ return (
                                                     <i data-lucide="message-square" className="w-3.5 h-3.5 text-slate-400"></i>
                                                     <span>Hover Tooltips</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showTooltips} 
-                                                    onChange={() => toggleSetting('showTooltips')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showTooltips}
+                                                    onChange={() => toggleSetting('showTooltips')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1485,10 +1821,10 @@ return (
                                                     <i data-lucide="bar-chart-horizontal" className="w-3.5 h-3.5 text-brand-600"></i>
                                                     <span>Top Status Filter Bar</span>
                                                 </span>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={displaySettings.showTopFilterBar} 
-                                                    onChange={() => toggleSetting('showTopFilterBar')} 
+                                                <input
+                                                    type="checkbox"
+                                                    checked={displaySettings.showTopFilterBar}
+                                                    onChange={() => toggleSetting('showTopFilterBar')}
                                                     className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
                                                 />
                                             </label>
@@ -1512,12 +1848,12 @@ return (
                                 title="Upload Custom Blueprint Plan"
                             >
                                 <i data-lucide="image-up" className="w-5 h-5"></i>
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    ref={fileInputRef} 
-                                    onChange={handleImageUpload} 
-                                    className="hidden" 
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    ref={fileInputRef}
+                                    onChange={handleImageUpload}
+                                    className="hidden"
                                 />
                             </label>
 
@@ -1560,27 +1896,25 @@ return (
                             {/* Supabase Cloud */}
                             <button
                                 onClick={() => setShowSupabaseModal(true)}
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center border transition shadow-2xs relative ${
-                                    supabaseStatus === 'CONNECTED'
-                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
-                                    : supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING'
-                                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
-                                    : supabaseStatus === 'ERROR'
-                                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300'
-                                    : 'bg-white hover:bg-sky-50 text-slate-700 border-sky-200'
-                                }`}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center border transition shadow-2xs relative ${supabaseStatus === 'CONNECTED'
+                                        ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                                        : supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING'
+                                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
+                                            : supabaseStatus === 'ERROR'
+                                                ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300'
+                                                : 'bg-white hover:bg-sky-50 text-slate-700 border-sky-200'
+                                    }`}
                                 title={`Supabase Cloud Realtime (${supabaseStatus})`}
                             >
                                 <i data-lucide="cloud" className="w-5 h-5"></i>
-                                <span className={`w-2 h-2 rounded-full absolute top-1.5 right-1.5 ${
-                                    supabaseStatus === 'CONNECTED'
-                                    ? 'bg-emerald-500 animate-pulse'
-                                    : supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING'
-                                    ? 'bg-amber-500'
-                                    : supabaseStatus === 'ERROR'
-                                    ? 'bg-rose-500'
-                                    : 'bg-slate-300'
-                                }`}></span>
+                                <span className={`w-2 h-2 rounded-full absolute top-1.5 right-1.5 ${supabaseStatus === 'CONNECTED'
+                                        ? 'bg-emerald-500 animate-pulse'
+                                        : supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING'
+                                            ? 'bg-amber-500'
+                                            : supabaseStatus === 'ERROR'
+                                                ? 'bg-rose-500'
+                                                : 'bg-slate-300'
+                                    }`}></span>
                             </button>
 
                             {/* Clear All Data */}
@@ -1624,7 +1958,7 @@ return (
                                     <span className="px-2 text-xs font-semibold text-brand-700 flex items-center gap-1 border-r border-sky-100 shrink-0">
                                         <i data-lucide="crosshair" className="w-3.5 h-3.5 text-brand-500"></i>
                                     </span>
-                                    <select 
+                                    <select
                                         onChange={(e) => handleFocusLocation(e.target.value)}
                                         defaultValue=""
                                         className="bg-transparent text-xs text-slate-700 font-medium px-2 py-0.5 outline-none cursor-pointer w-full truncate"
@@ -1686,11 +2020,10 @@ return (
                                 {/* Toggle Right Sidebar */}
                                 <button
                                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                                    className={`px-3 py-1.5 rounded-xl border transition shadow-2xs text-xs font-bold flex items-center gap-1.5 ${
-                                        isSidebarOpen 
-                                        ? 'bg-sky-50 text-brand-700 border-sky-200' 
-                                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                    }`}
+                                    className={`px-3 py-1.5 rounded-xl border transition shadow-2xs text-xs font-bold flex items-center gap-1.5 ${isSidebarOpen
+                                            ? 'bg-sky-50 text-brand-700 border-sky-200'
+                                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
                                     title={isSidebarOpen ? "Hide Scaffold Register Sidebar" : "Show Scaffold Register Sidebar"}
                                 >
                                     <i data-lucide={isSidebarOpen ? "panel-right-close" : "panel-right-open"} className="w-4 h-4"></i>
@@ -1710,15 +2043,13 @@ return (
                                             <button
                                                 key={cfg.id}
                                                 onClick={() => setActiveFilter(cfg.id)}
-                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all duration-200 ${
-                                                    isCurrent ? cfg.activeColor : cfg.color
-                                                }`}
+                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all duration-200 ${isCurrent ? cfg.activeColor : cfg.color
+                                                    }`}
                                             >
                                                 <i data-lucide={cfg.icon} className="w-3.5 h-3.5"></i>
                                                 <span>{cfg.label}</span>
-                                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                                                    isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
-                                                }`}>
+                                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                                                    }`}>
                                                     {count}
                                                 </span>
                                             </button>
@@ -1749,9 +2080,8 @@ return (
                             {/* Canvas Viewport */}
                             <div
                                 ref={canvasRef}
-                                className={`flex-1 relative overflow-hidden flex items-center justify-center canvas-area ${
-                                    displaySettings.showCanvasGrid ? 'has-grid' : ''
-                                } ${drawingMode ? 'draw-mode' : ''}`}
+                                className={`flex-1 relative overflow-hidden flex items-center justify-center canvas-area ${displaySettings.showCanvasGrid ? 'has-grid' : ''
+                                    } ${drawingMode ? 'draw-mode' : ''}`}
                                 onMouseDown={handleMouseDown}
                                 onMouseMove={handleMouseMove}
                                 onMouseUp={handleMouseUp}
@@ -1842,11 +2172,11 @@ return (
                                             const cfg = STATUS_CONFIG[s.status] || STATUS_CONFIG.ACTIVE;
                                             const imgH = imageRef.current?.offsetHeight || 800;
                                             const ptsCoord = s.points.map(p => `${(p.x * 1200) / 100},${(p.y * imgH) / 100}`).join(' ');
-                                            
+
                                             return (
-                                                <g 
-                                                    key={s.id} 
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedScaffold(s); }} 
+                                                <g
+                                                    key={s.id}
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedScaffold(s); }}
                                                     className="cursor-pointer pointer-events-auto group"
                                                 >
                                                     {/* Invisible wider hit area for easy mouse selection */}
@@ -1940,15 +2270,13 @@ return (
                                             <div
                                                 key={loc.id}
                                                 style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
-                                                className={`absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 z-10 ${
-                                                    isFocused ? 'scale-125 ring-4 ring-brand-400 rounded-lg p-0.5 bg-white shadow-xl' : ''
-                                                }`}
+                                                className={`absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300 z-10 ${isFocused ? 'scale-125 ring-4 ring-brand-400 rounded-lg p-0.5 bg-white shadow-xl' : ''
+                                                    }`}
                                             >
-                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-black font-mono shadow-xs ${
-                                                    isFocused 
-                                                    ? 'bg-brand-600 text-white' 
-                                                    : 'bg-rose-600/90 text-white'
-                                                }`}>
+                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-black font-mono shadow-xs ${isFocused
+                                                        ? 'bg-brand-600 text-white'
+                                                        : 'bg-rose-600/90 text-white'
+                                                    }`}>
                                                     {loc.name}
                                                 </span>
                                             </div>
@@ -1966,29 +2294,25 @@ return (
                                                 key={s.id}
                                                 style={{ left: `${s.x}%`, top: `${s.y}%` }}
                                                 onClick={(e) => { e.stopPropagation(); setSelectedScaffold(s); }}
-                                                className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-150 z-20 group ${
-                                                    isSelected ? 'scale-125 z-30' : 'hover:scale-115'
-                                                }`}
+                                                className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-150 z-20 group ${isSelected ? 'scale-125 z-30' : 'hover:scale-115'
+                                                    }`}
                                             >
                                                 {/* Pulse circle for urgent/expired */}
                                                 {displaySettings.showAlertPulse && (isExpired || isUrgent) && (
-                                                    <span className={`absolute -inset-1.5 rounded-full animate-ping opacity-75 ${
-                                                        isExpired ? 'bg-rose-500' : 'bg-amber-400'
-                                                    }`}></span>
+                                                    <span className={`absolute -inset-1.5 rounded-full animate-ping opacity-75 ${isExpired ? 'bg-rose-500' : 'bg-amber-400'
+                                                        }`}></span>
                                                 )}
 
                                                 {/* Main Marker Pin */}
-                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white ${
-                                                    cfg.badgeBg
-                                                } ${isSelected ? 'ring-2 ring-brand-500 ring-offset-2' : ''}`}>
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white ${cfg.badgeBg
+                                                    } ${isSelected ? 'ring-2 ring-brand-500 ring-offset-2' : ''}`}>
                                                     <i data-lucide={cfg.icon} className="w-3.5 h-3.5"></i>
                                                 </div>
 
                                                 {/* Label Tag on Pin */}
                                                 {displaySettings.showPinLabels && (
-                                                    <span className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 px-1.5 py-0.2 rounded font-mono font-bold text-[9px] shadow-xs whitespace-nowrap ${
-                                                        isSelected ? 'bg-brand-600 text-white' : 'bg-slate-900/85 text-white'
-                                                    }`}>
+                                                    <span className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 px-1.5 py-0.2 rounded font-mono font-bold text-[9px] shadow-xs whitespace-nowrap ${isSelected ? 'bg-brand-600 text-white' : 'bg-slate-900/85 text-white'
+                                                        }`}>
                                                         {s.id}
                                                     </span>
                                                 )}
@@ -2023,15 +2347,25 @@ return (
                                                 {scaffolds.length} Units
                                             </span>
                                         </div>
-                                        <div className="relative">
-                                            <i data-lucide="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                            <input
-                                                type="text"
-                                                placeholder="Search ID, Tag, Location, Inspector..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="w-full pl-9 pr-3 py-1.5 bg-white border border-sky-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition shadow-xs"
-                                            />
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative flex-1">
+                                                <i data-lucide="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search Scaffold ID, Tag, Unit..."
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    className="w-full pl-9 pr-3 py-1.5 bg-white border border-sky-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition shadow-xs"
+                                                />
+                                            </div>
+                                            <button
+                                                onClick={() => setShowScannerModal(true)}
+                                                className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl transition shadow-xs text-xs flex items-center gap-1 font-bold shrink-0"
+                                                title="Scan Physical Scafftag with Camera"
+                                            >
+                                                <i data-lucide="scan" className="w-3.5 h-3.5 text-purple-600"></i>
+                                                <span>Scan</span>
+                                            </button>
                                         </div>
                                     </div>
 
@@ -2048,6 +2382,13 @@ return (
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => setQrModalScaffold(selectedScaffold)}
+                                                        className="p-1 text-purple-700 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition text-xs font-bold"
+                                                        title="View & Print Physical Scafftag QR Code"
+                                                    >
+                                                        <i data-lucide="qr-code" className="w-3.5 h-3.5 text-purple-600"></i>
+                                                    </button>
                                                     <button
                                                         onClick={() => {
                                                             setEditingScaffold(selectedScaffold);
@@ -2088,13 +2429,12 @@ return (
                                                 const { isExpired, isUrgent, daysPassed, daysLeft } = evaluateInspectionHealth(selectedScaffold);
 
                                                 return (
-                                                    <div className={`p-3.5 rounded-xl border mb-3 text-xs ${
-                                                        isExpired 
-                                                        ? 'bg-rose-50 border-rose-200 text-rose-800' 
-                                                        : isUrgent
-                                                        ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
-                                                        : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                                    }`}>
+                                                    <div className={`p-3.5 rounded-xl border mb-3 text-xs ${isExpired
+                                                            ? 'bg-rose-50 border-rose-200 text-rose-800'
+                                                            : isUrgent
+                                                                ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
+                                                                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                                        }`}>
                                                         <div className="flex items-center justify-between font-bold mb-1.5">
                                                             <span className="flex items-center gap-1.5">
                                                                 <i data-lucide={isExpired ? "alert-octagon" : isUrgent ? "alert-triangle" : "calendar-clock"} className="w-4 h-4"></i>
@@ -2105,11 +2445,11 @@ return (
                                                             </span>
                                                         </div>
                                                         <p className="text-[11px] mb-2.5 opacity-90 leading-relaxed">
-                                                            {isExpired 
-                                                                ? `Last inspected ${daysPassed} days ago (>7 days). Workers prohibited from accessing this scaffold until reinspected!` 
+                                                            {isExpired
+                                                                ? `Last inspected ${daysPassed} days ago (>7 days). Workers prohibited from accessing this scaffold until reinspected!`
                                                                 : isUrgent
-                                                                ? `Critical Warning! Inspection expires in ${daysLeft} days. Schedule HSE inspector today.`
-                                                                : `Inspected ${daysPassed} days ago. Operating normally.`}
+                                                                    ? `Critical Warning! Inspection expires in ${daysLeft} days. Schedule HSE inspector today.`
+                                                                    : `Inspected ${daysPassed} days ago. Operating normally.`}
                                                         </p>
 
                                                         <button
@@ -2222,25 +2562,23 @@ return (
                                                 return (
                                                     <div
                                                         key={item.id}
-                                                        onClick={() => setSelectedScaffold(item)}
-                                                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all duration-150 ${
-                                                            isSelected 
-                                                            ? 'bg-sky-50/80 border-brand-500 shadow-sm ring-1 ring-brand-400/40' 
-                                                            : isExpired
-                                                            ? 'bg-rose-50/40 border-rose-200 hover:border-rose-400'
-                                                            : isUrgent
-                                                            ? 'bg-amber-50/40 border-amber-200 hover:border-amber-400'
-                                                            : 'bg-white border-sky-100 hover:border-brand-200 hover:shadow-xs'
-                                                        }`}
+                                                        onClick={() => handleFocusScaffold(item)}
+                                                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all duration-150 ${isSelected
+                                                                ? 'bg-sky-50/80 border-brand-500 shadow-sm ring-1 ring-brand-400/40'
+                                                                : isExpired
+                                                                    ? 'bg-rose-50/40 border-rose-200 hover:border-rose-400'
+                                                                    : isUrgent
+                                                                        ? 'bg-amber-50/40 border-amber-200 hover:border-amber-400'
+                                                                        : 'bg-white border-sky-100 hover:border-brand-200 hover:shadow-xs'
+                                                            }`}
                                                     >
                                                         <div className="flex items-center justify-between mb-1">
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className={`w-2 h-2 rounded-full ${
-                                                                    isExpired ? 'bg-rose-600 animate-pulse' :
-                                                                    isUrgent ? 'bg-amber-500 animate-ping' :
-                                                                    item.status === 'ACTIVE' ? 'bg-emerald-500' :
-                                                                    item.status === 'BUILDING' ? 'bg-amber-500' : 'bg-slate-400'
-                                                                }`}></span>
+                                                                <span className={`w-2 h-2 rounded-full ${isExpired ? 'bg-rose-600 animate-pulse' :
+                                                                        isUrgent ? 'bg-amber-500 animate-ping' :
+                                                                            item.status === 'ACTIVE' ? 'bg-emerald-500' :
+                                                                                item.status === 'BUILDING' ? 'bg-amber-500' : 'bg-slate-400'
+                                                                    }`}></span>
                                                                 <span className="font-extrabold text-slate-800">{item.id}</span>
                                                                 {item.type === 'LINEAR' && (
                                                                     <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.2 rounded font-bold">
@@ -2259,11 +2597,11 @@ return (
                                                         <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100 pt-2 font-mono">
                                                             <span>Tag: {item.tagNumber}</span>
                                                             <span className={
-                                                                isExpired 
-                                                                ? 'text-rose-600 font-bold' 
-                                                                : isUrgent 
-                                                                ? 'text-amber-600 font-bold' 
-                                                                : 'text-slate-500'
+                                                                isExpired
+                                                                    ? 'text-rose-600 font-bold'
+                                                                    : isUrgent
+                                                                        ? 'text-amber-600 font-bold'
+                                                                        : 'text-slate-500'
                                                             }>
                                                                 {isExpired ? 'EXPIRED (>7d)' : isUrgent ? `URGENT (${daysLeft}d left)` : `${daysPassed}d ago`}
                                                             </span>
@@ -2291,14 +2629,14 @@ return (
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-sm text-slate-900">
-                                                {modalMode === 'NEW' 
-                                                    ? (editingScaffold.type === 'LINEAR' ? 'Configure Linear Scaffold Route' : 'Register New Scaffold') 
+                                                {modalMode === 'NEW'
+                                                    ? (editingScaffold.type === 'LINEAR' ? 'Configure Linear Scaffold Route' : 'Register New Scaffold')
                                                     : `Edit Scaffold: ${editingScaffold.id}`}
                                             </h3>
                                             <p className="text-[11px] text-slate-400">Specify technical dimensions and 7-day HSE lifecycle</p>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => setShowModal(false)}
                                         className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
                                     >
@@ -2594,7 +2932,7 @@ return (
                                             <p className="text-[11px] text-slate-400">Download official templates, import spreadsheets, or backup JSON</p>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => setShowDataModal(false)}
                                         className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
                                     >
@@ -2606,33 +2944,30 @@ return (
                                 <div className="flex gap-2 border-b border-sky-100 mb-4 pb-2">
                                     <button
                                         onClick={() => setDataModalTab('EXCEL')}
-                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                                            dataModalTab === 'EXCEL'
-                                            ? 'bg-emerald-600 text-white shadow-xs'
-                                            : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
-                                        }`}
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${dataModalTab === 'EXCEL'
+                                                ? 'bg-emerald-600 text-white shadow-xs'
+                                                : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
+                                            }`}
                                     >
                                         <i data-lucide="file-spreadsheet" className="w-4 h-4"></i>
                                         <span>Excel Center (.xlsx)</span>
                                     </button>
                                     <button
                                         onClick={() => setDataModalTab('EXPORT')}
-                                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                                            dataModalTab === 'EXPORT'
-                                            ? 'bg-brand-600 text-white shadow-xs'
-                                            : 'text-slate-600 hover:bg-slate-100'
-                                        }`}
+                                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${dataModalTab === 'EXPORT'
+                                                ? 'bg-brand-600 text-white shadow-xs'
+                                                : 'text-slate-600 hover:bg-slate-100'
+                                            }`}
                                     >
                                         <i data-lucide="download" className="w-3.5 h-3.5"></i>
                                         <span>Export JSON</span>
                                     </button>
                                     <button
                                         onClick={() => setDataModalTab('IMPORT')}
-                                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                                            dataModalTab === 'IMPORT'
-                                            ? 'bg-brand-600 text-white shadow-xs'
-                                            : 'text-slate-600 hover:bg-slate-100'
-                                        }`}
+                                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${dataModalTab === 'IMPORT'
+                                                ? 'bg-brand-600 text-white shadow-xs'
+                                                : 'text-slate-600 hover:bg-slate-100'
+                                            }`}
                                     >
                                         <i data-lucide="upload" className="w-3.5 h-3.5"></i>
                                         <span>Import JSON</span>
@@ -2805,7 +3140,7 @@ return (
                                             <p className="text-[11px] text-slate-400">Online multi-user realtime synchronization for visual tracking</p>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => setShowSupabaseModal(false)}
                                         className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
                                     >
@@ -2814,23 +3149,21 @@ return (
                                 </div>
 
                                 {/* Status Banner */}
-                                <div className={`p-3 rounded-xl border mb-4 flex items-center justify-between text-xs ${
-                                    supabaseStatus === 'CONNECTED'
-                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                                    : supabaseStatus === 'TABLE_MISSING'
-                                    ? 'bg-amber-50 border-amber-200 text-amber-900'
-                                    : supabaseStatus === 'CONNECTING'
-                                    ? 'bg-sky-50 border-sky-200 text-sky-900'
-                                    : supabaseStatus === 'ERROR'
-                                    ? 'bg-rose-50 border-rose-200 text-rose-900'
-                                    : 'bg-slate-50 border-slate-200 text-slate-700'
-                                }`}>
+                                <div className={`p-3 rounded-xl border mb-4 flex items-center justify-between text-xs ${supabaseStatus === 'CONNECTED'
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                        : supabaseStatus === 'TABLE_MISSING'
+                                            ? 'bg-amber-50 border-amber-200 text-amber-900'
+                                            : supabaseStatus === 'CONNECTING'
+                                                ? 'bg-sky-50 border-sky-200 text-sky-900'
+                                                : supabaseStatus === 'ERROR'
+                                                    ? 'bg-rose-50 border-rose-200 text-rose-900'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                                    }`}>
                                     <div className="flex items-center gap-2.5">
-                                        <div className={`w-3 h-3 rounded-full shrink-0 ${
-                                            supabaseStatus === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' :
-                                            supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING' ? 'bg-amber-500' :
-                                            supabaseStatus === 'ERROR' ? 'bg-rose-500' : 'bg-slate-400'
-                                        }`}></div>
+                                        <div className={`w-3 h-3 rounded-full shrink-0 ${supabaseStatus === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' :
+                                                supabaseStatus === 'TABLE_MISSING' || supabaseStatus === 'CONNECTING' ? 'bg-amber-500' :
+                                                    supabaseStatus === 'ERROR' ? 'bg-rose-500' : 'bg-slate-400'
+                                            }`}></div>
                                         <div>
                                             <div className="font-bold">
                                                 {supabaseStatus === 'CONNECTED' && '🟢 Connected to Supabase Cloud (Live Sync Active)'}
@@ -2841,8 +3174,8 @@ return (
                                             </div>
                                             <div className="text-[11px] opacity-80">
                                                 {supabaseStatus === 'CONNECTED' ? `${scaffolds.length} scaffolds on canvas. Realtime synchronization ready.` :
-                                                 supabaseStatus === 'TABLE_MISSING' ? 'Execute the SQL setup script below in Supabase Dashboard SQL Editor.' :
-                                                 'Configuration is securely retained in your browser (Local 1-Page).'}
+                                                    supabaseStatus === 'TABLE_MISSING' ? 'Execute the SQL setup script below in Supabase Dashboard SQL Editor.' :
+                                                        'Configuration is securely retained in your browser (Local 1-Page).'}
                                             </div>
                                         </div>
                                     </div>
@@ -2969,8 +3302,144 @@ return (
                                             Run this script once in <b>Supabase Dashboard</b> → <b>SQL Editor</b> → <b>New Query</b> → <b>Run</b> to create tables, RLS policies, and realtime publication:
                                         </p>
                                         <pre className="p-2.5 bg-slate-900 text-slate-200 rounded-lg font-mono text-[10px] overflow-x-auto max-h-36 leading-relaxed select-all">
-{SUPABASE_SQL_SETUP}
+                                            {SUPABASE_SQL_SETUP}
                                         </pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Printable Scafftag & QR Modal */}
+                    {qrModalScaffold && (
+                        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                                {/* Scafftag Card (Target for @media print) */}
+                                <div id="printable-scafftag" className="p-6 bg-white text-slate-800 border-4 border-slate-900 m-3 rounded-2xl">
+                                    {/* Header Banner based on HSE status */}
+                                    <div className={`p-3 rounded-xl text-center text-white font-extrabold uppercase tracking-wider text-xs mb-4 shadow-xs ${
+                                        qrModalScaffold.status === 'ACTIVE' ? 'bg-emerald-600' :
+                                        qrModalScaffold.status === 'BUILDING' ? 'bg-amber-500' :
+                                        qrModalScaffold.status === 'EXPIRED' ? 'bg-rose-600' :
+                                        'bg-slate-700'
+                                    }`}>
+                                        {qrModalScaffold.status === 'ACTIVE' ? '✓ SCAFFOLD SAFE FOR USE (GREEN TAG)' :
+                                         qrModalScaffold.status === 'BUILDING' ? '⚠ CAUTION - UNDER ERECTION / MODIFICATION' :
+                                         qrModalScaffold.status === 'EXPIRED' ? '⛔ DANGER - DO NOT USE SCAFFOLD' :
+                                         'SCAFFOLD WORK STATUS: ' + qrModalScaffold.status}
+                                    </div>
+
+                                    <div className="flex items-center justify-between border-b pb-3 mb-3 border-slate-200">
+                                        <div>
+                                            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">ScaffTech Project Safety</div>
+                                            <div className="text-xl font-black text-slate-900 font-mono tracking-tight">{qrModalScaffold.id}</div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Physical Tag No</div>
+                                            <div className="text-sm font-bold text-brand-700 font-mono">{qrModalScaffold.tagNumber}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* QR Code Container */}
+                                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 my-3">
+                                        <img 
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrModalScaffold.id)}&color=0f172a&bgcolor=f8fafc`} 
+                                            alt={`QR Code for ${qrModalScaffold.id}`}
+                                            className="w-36 h-36 rounded-xl shadow-xs"
+                                        />
+                                        <div className="text-xs font-mono text-slate-700 mt-2 font-black tracking-wider">{qrModalScaffold.id}</div>
+                                        <div className="text-[10px] text-slate-400">Scan via ScaffTech to verify inspection</div>
+                                    </div>
+
+                                    {/* Details Grid */}
+                                    <div className="space-y-1.5 text-xs border-t pt-3 border-slate-200">
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Location:</span> <span className="font-bold text-slate-900">{qrModalScaffold.location}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Structure:</span> <span className="font-semibold text-slate-800">{qrModalScaffold.structureType || 'Tower'}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Height / Length:</span> <span className="font-mono text-slate-800">{qrModalScaffold.heightMeters || '-'} / {qrModalScaffold.lengthMeters || '-'}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">Last Inspection:</span> <span className="font-bold text-slate-900 font-mono">{qrModalScaffold.lastInspection || '-'}</span></div>
+                                        <div className="flex justify-between"><span className="text-slate-500 font-medium">HSE Inspector:</span> <span className="font-semibold text-slate-800">{qrModalScaffold.inspector || '-'}</span></div>
+                                    </div>
+                                </div>
+
+                                {/* Modal Footer (Screen-only actions) */}
+                                <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(qrModalScaffold.id);
+                                            showNotification(`Scaffold ID "${qrModalScaffold.id}" copied to clipboard!`, 'info');
+                                        }}
+                                        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <i data-lucide="copy" className="w-3.5 h-3.5"></i>
+                                        <span>Copy ID</span>
+                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setQrModalScaffold(null)}
+                                            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                                        >
+                                            Close
+                                        </button>
+                                        <button
+                                            onClick={() => window.print()}
+                                            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/25 transition flex items-center gap-1.5"
+                                        >
+                                            <i data-lucide="printer" className="w-4 h-4"></i>
+                                            <span>Print Scafftag</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Camera QR Scanner Modal */}
+                    {showScannerModal && (
+                        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                    <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                                        <i data-lucide="scan" className="w-4 h-4 text-brand-600"></i>
+                                        <span>Scan Physical Scafftag QR</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowScannerModal(false)}
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
+                                    >
+                                        <i data-lucide="x" className="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                <div className="p-4">
+                                    <div id="qr-camera-stream-map" className="w-full aspect-square bg-slate-900 rounded-2xl overflow-hidden relative flex items-center justify-center">
+                                        <div className="text-white text-xs text-center p-4">
+                                            <div className="animate-pulse mb-2 font-bold">Camera scanner active...</div>
+                                            <p className="text-[11px] text-slate-400">Point device camera at the physical Scafftag QR code</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 text-center">
+                                        <p className="text-[11px] text-slate-500 font-medium">Or type Scaffold ID directly:</p>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. SCF-26-0001"
+                                                id="manual-scan-input-map"
+                                                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && e.target.value.trim()) {
+                                                        handleQrCodeDetected(e.target.value.trim());
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const val = document.getElementById('manual-scan-input-map')?.value?.trim();
+                                                    if (val) handleQrCodeDetected(val);
+                                                }}
+                                                className="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 shadow-xs"
+                                            >
+                                                Lookup
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2979,15 +3448,14 @@ return (
 
                     {/* Toast Alerts */}
                     {toast && (
-                        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-bottom duration-200 ${
-                            toast.type === 'success' 
-                            ? 'bg-emerald-600 border-emerald-500 text-white' 
-                            : toast.type === 'warning' 
-                            ? 'bg-amber-500 border-amber-400 text-white' 
-                            : toast.type === 'danger'
-                            ? 'bg-rose-600 border-rose-500 text-white'
-                            : 'bg-slate-900 border-slate-800 text-white'
-                        }`}>
+                        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-bottom duration-200 ${toast.type === 'success'
+                                ? 'bg-emerald-600 border-emerald-500 text-white'
+                                : toast.type === 'warning'
+                                    ? 'bg-amber-500 border-amber-400 text-white'
+                                    : toast.type === 'danger'
+                                        ? 'bg-rose-600 border-rose-500 text-white'
+                                        : 'bg-slate-900 border-slate-800 text-white'
+                            }`}>
                             <i data-lucide={toast.type === 'success' ? 'check-circle' : toast.type === 'danger' ? 'alert-octagon' : toast.type === 'warning' ? 'alert-triangle' : 'info'} className="w-5 h-5 shrink-0"></i>
                             <span className="text-xs font-semibold leading-relaxed">{toast.message}</span>
                         </div>
@@ -3000,4 +3468,5 @@ return (
         root.render(<App />);
     </script>
 </body>
+
 </html>
