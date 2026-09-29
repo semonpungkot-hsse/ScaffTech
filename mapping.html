@@ -516,6 +516,127 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
             return candidate;
         };
 
+        // Universal Excel Date Parser (handles serial numbers and string formats)
+        const formatExcelDate = (val) => {
+            if (!val) return '';
+            if (typeof val === 'number') {
+                const jsDate = new Date(Math.round((val - 25569) * 86400 * 1000));
+                return !isNaN(jsDate.getTime()) ? jsDate.toISOString().split('T')[0] : '';
+            }
+            if (val instanceof Date) {
+                return !isNaN(val.getTime()) ? val.toISOString().split('T')[0] : '';
+            }
+            const str = String(val).trim();
+            const parsed = new Date(str);
+            return !isNaN(parsed.getTime()) ? parsed.toISOString().split('T')[0] : str;
+        };
+
+        // Universal Excel/JSON Row Parser (guarantees schema compatibility & coordinate autocalibration)
+        const parseImportedRow = (r, idx, currentList) => {
+            let rawId = r['Scaffold ID'] || r['ID Scaffolding'] || r['id'] || r['ID'] || r['Tag ID'];
+            const rawType = String(r['Type (POINT / LINEAR)'] || r['Type'] || r['Tipe'] || r['type'] || 'POINT').trim().toUpperCase();
+            const type = rawType.includes('LIN') ? 'LINEAR' : 'POINT';
+            
+            let id = rawId ? String(rawId).trim() : generateUniqueScaffoldId(type, currentList);
+            
+            let tagNumber = String(r['Tag Number'] || r['tag_number'] || r['No Tag'] || r['Nomor Tag'] || `TAG-${id}`).trim();
+            let location = String(r['Location'] || r['Lokasi'] || r['location'] || 'SUB 524').trim();
+            
+            let rawStatus = String(r['Status'] || r['Status HSE'] || r['HSE Status'] || r['status'] || 'ACTIVE').trim().toUpperCase();
+            let status = 'ACTIVE';
+            if (rawStatus.includes('BUILD') || rawStatus.includes('ERECT') || rawStatus.includes('PASANG')) status = 'BUILDING';
+            else if (rawStatus.includes('EXP') || rawStatus.includes('DUE') || rawStatus.includes('HABIS') || rawStatus.includes('RED')) status = 'EXPIRED';
+            else if (rawStatus.includes('REQ') || rawStatus.includes('MINTA')) status = 'REQUESTED';
+            else if (rawStatus.includes('DISM') || rawStatus.includes('BONGKAR')) status = 'DISMANTLED';
+            else status = 'ACTIVE';
+
+            let structureType = String(r['Structure Type'] || r['structure_type'] || r['Tipe Struktur'] || (type === 'LINEAR' ? 'Pipe Rack Linear Scaffold' : 'Independent Tower')).trim();
+            let heightMeters = String(r['Height (m)'] || r['Height'] || r['height_meters'] || r['Tinggi (m)'] || r['Tinggi'] || '6m').trim();
+            let lengthMeters = String(r['Linear Span'] || r['Length'] || r['length_meters'] || r['Panjang (m)'] || r['Panjang'] || (type === 'LINEAR' ? '25 meters' : '-')).trim();
+
+            let installDate = formatExcelDate(r['Install Date'] || r['install_date'] || r['Tgl Pemasangan'] || r['Tanggal Pasang']);
+            let lastInspection = formatExcelDate(r['Last Inspection Date'] || r['Last Inspection'] || r['last_inspection'] || r['Tgl Inspeksi Terakhir'] || r['Tanggal Inspeksi']);
+            let targetDismantleDate = formatExcelDate(r['Target Dismantle'] || r['target_dismantle_date'] || r['Target Bongkar']);
+            let actualDismantleDate = formatExcelDate(r['Actual Dismantle'] || r['actual_dismantle_date'] || r['Aktual Bongkar']);
+
+            let inspector = String(r['Inspector'] || r['HSE Inspector'] || r['inspector'] || r['Inspector HSE'] || r['Petugas'] || '').trim();
+            let notes = String(r['Remarks'] || r['Notes & Remarks'] || r['notes'] || r['Catatan'] || r['Keterangan'] || '').trim();
+
+            let x = undefined;
+            let y = undefined;
+            let points = null;
+
+            const rawCoords = r['Coordinates (X,Y / Path)'] || r['Coordinates'] || r['Koordinat'];
+            const rawPoints = r['Path Points (JSON)'] || r['points'];
+
+            if (rawPoints) {
+                try {
+                    points = typeof rawPoints === 'string' ? JSON.parse(rawPoints) : rawPoints;
+                } catch (e) {}
+            }
+
+            if (type === 'LINEAR') {
+                if (!points || !Array.isArray(points) || points.length < 2) {
+                    if (typeof rawCoords === 'string' && rawCoords.includes(';')) {
+                        const parsedPts = rawCoords.split(';').map(ptStr => {
+                            const [px, py] = ptStr.split(',').map(n => parseFloat(n.trim()));
+                            return (!isNaN(px) && !isNaN(py)) ? { x: px, y: py } : null;
+                        }).filter(Boolean);
+                        if (parsedPts.length >= 2) points = parsedPts;
+                    }
+                }
+                if (!points || points.length < 2) {
+                    const parts = location.split('->').map(s => s.trim());
+                    const p1 = MAP_RED_LOCATIONS.find(l => parts[0] && parts[0].includes(l.name)) || { x: 34.2, y: 42.3 };
+                    const p2 = MAP_RED_LOCATIONS.find(l => parts[1] && parts[1].includes(l.name)) || { x: 44.5, y: 42.1 };
+                    points = [{ x: p1.x, y: p1.y }, { x: p2.x, y: p2.y }];
+                }
+            } else {
+                const rawX = r['Coordinate X (%)'] !== undefined ? r['Coordinate X (%)'] : r['x'];
+                const rawY = r['Coordinate Y (%)'] !== undefined ? r['Coordinate Y (%)'] : r['y'];
+                if (rawX !== undefined && rawY !== undefined && !isNaN(parseFloat(rawX)) && !isNaN(parseFloat(rawY))) {
+                    x = parseFloat(parseFloat(rawX).toFixed(2));
+                    y = parseFloat(parseFloat(rawY).toFixed(2));
+                } else if (typeof rawCoords === 'string' && rawCoords.includes(',')) {
+                    const [cx, cy] = rawCoords.split(',').map(n => parseFloat(n.trim()));
+                    if (!isNaN(cx) && !isNaN(cy)) {
+                        x = parseFloat(cx.toFixed(2));
+                        y = parseFloat(cy.toFixed(2));
+                    }
+                }
+                if (x === undefined || y === undefined) {
+                    const matchedLoc = MAP_RED_LOCATIONS.find(l => location && location.includes(l.name));
+                    if (matchedLoc) {
+                        x = matchedLoc.x;
+                        y = matchedLoc.y;
+                    } else {
+                        x = 21.2;
+                        y = 12.5;
+                    }
+                }
+            }
+
+            return {
+                id,
+                tagNumber,
+                location,
+                type,
+                status,
+                x,
+                y,
+                points,
+                installDate,
+                lastInspection,
+                targetDismantleDate,
+                actualDismantleDate,
+                inspector,
+                notes,
+                structureType,
+                heightMeters,
+                lengthMeters
+            };
+        };
+
         function App() {
 
             // =========================================================================
@@ -1497,40 +1618,41 @@ GRANT ALL ON TABLE public.scaffolds TO service_role;`;
                         const wb = XLSX.read(bstr, { type: 'binary' });
                         const wsname = wb.SheetNames[0];
                         const ws = wb.Sheets[wsname];
-                        const rows = XLSX.utils.sheet_to_json(ws);
-                        if (!rows || rows.length === 0) {
+                        const rawRows = XLSX.utils.sheet_to_json(ws);
+                        if (!rawRows || rawRows.length === 0) {
                             showNotification('The uploaded Excel sheet contains no records!', 'warning');
                             return;
                         }
-                        const imported = rows.map((r, idx) => ({
-                            id: String(r['Scaffold ID'] || r['id'] || generateUniqueScaffoldId(r['Type'] || 'POINT', scaffolds)),
-                            tagNumber: String(r['Tag Number'] || r['tag_number'] || `TAG-${idx + 1}`),
-                            location: String(r['Location'] || r['location'] || 'SUB 524'),
-                            type: String(r['Type'] || r['type'] || 'POINT').toUpperCase() === 'LINEAR' ? 'LINEAR' : 'POINT',
-                            status: String(r['HSE Status'] || r['status'] || 'ACTIVE').toUpperCase(),
-                            x: r['Coordinate X (%)'] !== undefined ? parseFloat(r['Coordinate X (%)']) : 21.2,
-                            y: r['Coordinate Y (%)'] !== undefined ? parseFloat(r['Coordinate Y (%)']) : 12.5,
-                            points: r['Path Points (JSON)'] ? (typeof r['Path Points (JSON)'] === 'string' ? JSON.parse(r['Path Points (JSON)']) : r['Path Points (JSON)']) : null,
-                            installDate: formatExcelDate(r['Install Date'] || r['install_date']),
-                            lastInspection: formatExcelDate(r['Last Inspection'] || r['last_inspection']),
-                            targetDismantleDate: formatExcelDate(r['Target Dismantle'] || r['target_dismantle_date']),
-                            actualDismantleDate: formatExcelDate(r['Actual Dismantle'] || r['actual_dismantle_date']),
-                            inspector: String(r['HSE Inspector'] || r['inspector'] || ''),
-                            notes: String(r['Notes & Remarks'] || r['notes'] || ''),
-                            structureType: String(r['Structure Type'] || r['structure_type'] || 'Independent Tower'),
-                            heightMeters: String(r['Height'] || r['height_meters'] || '6m'),
-                            lengthMeters: String(r['Length'] || r['length_meters'] || '-')
-                        }));
-                        setScaffolds(imported);
-                        setSelectedScaffold(imported[0] || null);
-                        syncBatchUpsertScaffolds(imported);
+
+                        let currentWorkingList = [...scaffolds];
+                        const parsedRecords = [];
+
+                        rawRows.forEach((r, idx) => {
+                            const parsed = parseImportedRow(r, idx, currentWorkingList);
+                            if (!currentWorkingList.some(s => s.id.toLowerCase() === parsed.id.toLowerCase())) {
+                                currentWorkingList.push(parsed);
+                                parsedRecords.push(parsed);
+                            } else {
+                                const newUniqueId = generateUniqueScaffoldId(parsed.type, currentWorkingList);
+                                parsed.id = newUniqueId;
+                                currentWorkingList.push(parsed);
+                                parsedRecords.push(parsed);
+                            }
+                        });
+
+                        setScaffolds(currentWorkingList);
+                        if (parsedRecords.length > 0 && !selectedScaffold) {
+                            setSelectedScaffold(parsedRecords[0]);
+                        }
+                        syncBatchUpsertScaffolds(parsedRecords);
                         setShowDataModal(false);
-                        showNotification(`Successfully imported ${imported.length} scaffolds from Excel!`, 'success');
+                        showNotification(`Successfully imported ${parsedRecords.length} scaffolds from Excel!`, 'success');
                     } catch (err) {
                         showNotification('Failed to parse Excel file: ' + err.message, 'danger');
                     }
                 };
                 reader.readAsBinaryString(file);
+                e.target.value = '';
             };
 
             // Handle JSON File Import
