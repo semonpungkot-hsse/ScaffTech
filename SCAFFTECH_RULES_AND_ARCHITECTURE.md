@@ -4,10 +4,10 @@
 **ScaffTech Pro** is an enterprise-grade scaffolding management and HSE compliance application built for heavy industrial construction, petrochemical plants, and infrastructure projects. It eliminates unmapped scaffolding hazards by bridging **GIS-style visual route plan plotting** with a **real-time relational database (Supabase PostgreSQL)**, **printable QR Scafftag generator**, and **live camera field inspection scanner**.
 
 The system is deployed as a unified full-stack web platform:
-1. [**`index.html`**](file:///c:/Users/Rully/Documents/Rully%20Beriandi/Scaffolding/index.html) — **Executive Command Portal**: High-level real-time KPI overview synchronized with Supabase, universal search bar, live camera QR scanner, and direct deep-linking launchers.
-2. [**`mapping.html`**](file:///c:/Users/Rully/Documents/Rully%20Beriandi/Scaffolding/mapping.html) — **GIS Visual Mapping**: Interactive Greenfield Traffic Route Plan map canvas with pan/zoom navigation, live multi-point linear scaffold drawing, point pinning, beacon HSE status pulsing, layer controls, and bi-directional Supabase cloud replication.
-3. [**`database.html`**](file:///c:/Users/Rully/Documents/Rully%20Beriandi/Scaffolding/database.html) — **HSE Audit & Database Center**: Tabular management center providing real-time multi-user CRUD operations, HSE 7-day inspection tracking, quick inspection approvals, printable physical Scafftag QR cards, Excel `.xlsx` import/export, and coordinate integrity locking.
-4. [**`server.js`**](file:///c:/Users/Rully/Documents/Rully%20Beriandi/Scaffolding/server.js) — **Zero-Dependency Production HTTP Server**: Built-in Node.js server with `/api/health` monitoring, security headers, and static file streaming.
+1. [**`index.html`**](index.html) — **Executive Command Portal**: High-level real-time KPI overview synchronized with Supabase, universal search bar, live camera QR scanner, and direct deep-linking launchers.
+2. [**`mapping.html`**](mapping.html) — **GIS Visual Mapping**: Interactive Greenfield Traffic Route Plan map canvas with pan/zoom navigation, live multi-point linear scaffold drawing, point pinning, beacon HSE status pulsing, layer controls, and bi-directional Supabase cloud replication.
+3. [**`database.html`**](database.html) — **HSE Audit & Database Center**: Tabular management center providing real-time multi-user CRUD operations, HSE 7-day inspection tracking, quick inspection approvals, printable physical Scafftag QR cards, Excel `.xlsx` import/export, and coordinate integrity locking.
+4. [**`server.js`**](server.js) — **Zero-Dependency Production HTTP Server**: Built-in Node.js server with `/api/health` monitoring, security headers, and static file streaming.
 
 ---
 
